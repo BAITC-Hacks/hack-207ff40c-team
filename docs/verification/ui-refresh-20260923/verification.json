@@ -1,0 +1,135 @@
+{
+  "all_passed": true,
+  "results": [
+    {
+      "name": "harness-structure",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "scripts/harness.py",
+        "check"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.03998341699480079,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-00.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-00.log"
+    },
+    {
+      "name": "harness-regressions",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.5215838750009425,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-01.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-01.log"
+    },
+    {
+      "name": "local-frontend-build",
+      "kind": "build",
+      "argv": [
+        "env",
+        "VITE_MEETING_STATION=true",
+        "VITE_MEETING_LOCAL=true",
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "build"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.388910250010667,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-02.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-02.log"
+    },
+    {
+      "name": "backend-and-local-http",
+      "kind": "test",
+      "argv": [
+        "env",
+        "MI_RUN_LOCAL_HTTP_TESTS=1",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "station/tests",
+        "mac-worker/tests",
+        "-q"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 9.488514416007092,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-03.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-03.log"
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "test",
+      "argv": [
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "lint"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.327657249988988,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-04.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-04.log"
+    },
+    {
+      "name": "adapter-appliance-native-python-regressions",
+      "kind": "test",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-regressions.py",
+        "retained-python"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.6448187080095522,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-05.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-05.log"
+    },
+    {
+      "name": "frontend-browser-regressions",
+      "kind": "test",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-regressions.py",
+        "frontend"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 52.21096112500527,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-06.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-06.log"
+    },
+    {
+      "name": "real-browser-review-and-exports",
+      "kind": "smoke",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-ui.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 6.431964040995808,
+      "log": "docs/verification/ui-refresh-20260923/verify-20260923T125531833115Z-652916-07.txt",
+      "original_log": "reports/verify-20260923T125531833115Z-652916-07.log"
+    }
+  ],
+  "warning": "Exit codes alone do not establish that a configured check is meaningful."
+}

@@ -1,5 +1,13 @@
 # Evidence for the secretary's reviewed-minutes workflow
 
+Обновление интерфейса от 23 сентября 2026 года: все восемь настроенных проверок
+повторно пройдены, код выхода 0 ([отчёт](verification/ui-refresh-20260923/verification.json)).
+После последних изменений компоновки повторно прошли сборка и реальная съёмка:
+открытие импорта и расшифровки, исправление ответственного и срока, сохранение
+и повторная загрузка версии 1. Проверены мобильная ширина и тёмная тема;
+ошибок браузера и внешних запросов нет. Данные синтетические, модели не запускались.
+Это проверка поведения интерфейса, а не измерение удобства или качества распознавания.
+
 Latest repair evidence: [FOUNDATION_FIXES.md](FOUNDATION_FIXES.md) and
 [eight-check receipt](verification/foundations-20260923/verification.json).
 The 72 review findings now have implementation changes and regression coverage;

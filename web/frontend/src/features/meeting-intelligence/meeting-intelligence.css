@@ -598,7 +598,7 @@
 .mi-report-section h3 { font-size: 15px; margin-bottom: 16px; }
 .mi-report-section h3 > span { padding: 3px 8px; background: var(--mi-panel); border-radius: 6px; }
 .mi-summary-item > p, .mi-topic-card > p, .mi-report-item > p { font-size: 14px; line-height: 1.8; }
-.mi-report-section:first-child .mi-summary { background: var(--mi-panel); border-left: 3px solid var(--mi-accent); border-radius: 0 9px 9px 0; padding: 16px 18px; }
+.mi-report-section .mi-summary { background: var(--mi-panel); border-left: 3px solid var(--mi-accent); border-radius: 0 9px 9px 0; padding: 16px 18px; }
 .mi-evidence { margin-top: 10px; font-size: 11px; }
 .mi-evidence blockquote { margin-top: 8px; padding: 8px 12px; background: var(--mi-panel); border-radius: 0 6px 6px 0; line-height: 1.65; }
 .mi-action-table-wrap { border: 1px solid var(--mi-border); border-radius: 10px; }
@@ -694,4 +694,11 @@
   .mi-dialog { padding: 24px 20px; }
   .mi-segment { padding: 15px; }
   .mi-welcome { padding: 28px; min-height: 350px; }
+}
+
+.mi-page input:focus-visible, .mi-page textarea:focus-visible,
+.mi-dialog input:focus-visible, .mi-dialog textarea:focus-visible { box-shadow: none !important; border-color: var(--mi-accent); }
+@media (max-width: 700px) {
+  .mi-heading-actions button:last-child { flex-basis: 100%; }
+  .mi-exports select { flex: 1 0 100%; width: 100%; }
 }

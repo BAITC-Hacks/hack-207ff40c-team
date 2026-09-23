@@ -1,0 +1,51 @@
+STDOUT
++ npm --prefix web/frontend run test:regressions
+
+> frontend@0.0.0 test:regressions
+> playwright test --config e2e/regressions.config.ts
+
+
+Running 33 tests using 1 worker
+
+  ✓   1 e2e/regressions.spec.ts:20:1 › R033 storage getters and methods may throw without preventing theme changes or logout (460ms)
+  ✓   2 e2e/regressions.spec.ts:35:1 › R034 the 201st archived meeting can be opened and newer pages remain reachable (593ms)
+  ✓   3 e2e/regressions.spec.ts:62:1 › R035 concurrent 401s rotate once; a late failure cannot erase a newer login (245ms)
+  ✓   4 e2e/regressions.spec.ts:95:1 › R005 generated summaries cannot execute raw HTML (220ms)
+  ✓   5 e2e/regressions.spec.ts:103:1 › R005/R038 chat renders hostile content safely and preserves byte-split Russian/Kazakh (413ms)
+  ✓   6 e2e/regressions.spec.ts:126:3 › R005 summary never loads images embedded in generated Markdown (231ms)
+  ✓   7 e2e/regressions.spec.ts:126:3 › R005 chat never loads images embedded in generated Markdown (255ms)
+  ✓   8 e2e/regressions.spec.ts:153:1 › R039 non-2xx and JSON responses preserve the previous valid summary (344ms)
+  ✓   9 e2e/regressions.spec.ts:172:1 › R040 template POST failure preserves edited fields and allows retry (950ms)
+  ✓  10 e2e/regressions.spec.ts:190:1 › R040 authentication renewal refreshes model choices without resetting the template draft (960ms)
+  ✓  11 e2e/regressions.spec.ts:215:1 › R040 pending template saves block cancel, Escape, backdrop and further edits (935ms)
+  ✓  12 e2e/regressions.spec.ts:246:1 › R040 a save from an unmounted template dialog cannot close its replacement (806ms)
+  ✓  13 e2e/regressions.spec.ts:280:1 › R043 segment-only output stays readable and timestamp controls seek (204ms)
+  ✓  14 e2e/regressions.spec.ts:287:1 › R044 rejected note POST keeps the note and selected evidence for retry (481ms)
+  ✓  15 e2e/regressions.spec.ts:304:3 › R044 pending note save blocks all desktop dismissal paths (747ms)
+  ✓  16 e2e/regressions.spec.ts:304:3 › R044 pending note save blocks all mobile dismissal paths (754ms)
+  ✓  17 e2e/regressions.spec.ts:345:3 › R046 status 404 ends polling and retains the source for retry (5.1s)
+  ✓  18 e2e/regressions.spec.ts:345:3 › R046 status 410 ends polling and retains the source for retry (5.1s)
+  ✓  19 e2e/regressions.spec.ts:345:3 › R046 status 503 ends polling and retains the source for retry (13.1s)
+  ✓  20 e2e/regressions.spec.ts:387:3 › R006 microphone retains its real recorded Blob after a rejected upload (1.5s)
+  ✓  21 e2e/regressions.spec.ts:387:3 › R006 system retains its real recorded Blob after a rejected upload (1.7s)
+  ✓  22 e2e/regressions.spec.ts:408:1 › R036 browser Stop Sharing stops all tracks and yields a saved recording (1.1s)
+  ✓  23 e2e/regressions.spec.ts:421:3 › R037 mix failure releases every acquired media track and audio context (542ms)
+  ✓  24 e2e/regressions.spec.ts:421:3 › R037 recorder failure releases every acquired media track and audio context (526ms)
+  ✓  25 e2e/regressions.spec.ts:432:1 › R045 StrictMode reuses audio graph; real unmount closes every context (800ms)
+  ✓  26 e2e/regressions.spec.ts:457:3 › R041 bulk start retains the rejected item selected and reports partial success (1.2s)
+  ✓  27 e2e/regressions.spec.ts:457:3 › R041 bulk delete retains the rejected item selected and reports partial success (1.1s)
+  ✓  28 e2e/regressions.spec.ts:484:3 › R042 advanced table start preserves multi-track=false (953ms)
+  ✓  29 e2e/regressions.spec.ts:484:3 › R042 advanced table start preserves multi-track=true (891ms)
+  ✓  30 e2e/regressions.spec.ts:497:1 › R010 CLI approval rejects an external callback and transmits the loopback nonce only after approval (303ms)
+  ✓  31 e2e/regressions.spec.ts:515:1 › R046 bounded queue pending status advances to processing and completed (6.8s)
+  ✓  32 e2e/regressions.spec.ts:532:3 › R006 microphone close asks before discarding an active recording (742ms)
+  ✓  33 e2e/regressions.spec.ts:532:3 › R006 system close asks before discarding an active recording (662ms)
+
+  33 passed (51.9s)
+
+STDERR
+[WebServer] (node:61450) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(node:61452) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)

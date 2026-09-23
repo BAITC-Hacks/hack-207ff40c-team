@@ -1,5 +1,5 @@
 {
-  "captured_at_utc": "2026-09-23T10:46:08.373Z",
+  "captured_at_utc": "2026-09-23T13:00:03.518Z",
   "source": "scripts/check-ui.py seed",
   "synthetic": true,
   "model_inference": false,
@@ -20,5 +20,10 @@
     "04-reviewed-minutes.png"
   ],
   "browser_errors": [],
-  "external_requests": []
+  "external_requests": [],
+  "mobile_width": {
+    "viewport": 390,
+    "content": 390
+  },
+  "dark_theme_checked": true
 }
