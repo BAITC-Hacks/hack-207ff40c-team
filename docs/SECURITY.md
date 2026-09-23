@@ -1,125 +1,144 @@
-# Deployed security and recovery
+# Защита аппаратной установки и восстановление
 
-Audited on 11 September 2026. These controls apply to the deployed `station/`
-and `mac-worker/` pipeline. The native and older backend prototypes are separate.
+Проверка описанной установки выполнена **11 сентября 2026 года**. Ниже — меры
+защиты развёрнутой связки `station/` и `mac-worker/`. Нативное приложение и
+прежний сервер относятся к отдельным реализациям. Запуск на одном компьютере
+сам не создаёт эту сетевую конфигурацию или зашифрованное хранилище.
 
-| Boundary | Active protection |
+| Участок | Реализованная защита |
 | --- | --- |
-| Browser → Cubie | HTTPS with a private station CA. HTTP GET/HEAD redirects; other HTTP methods receive 426. Secure/HttpOnly refresh and viewer cookies; same-origin CSP; API responses use `no-store`. Login bearer tokens and pairing tokens persist only in the tab session. |
-| Cubie → Mac | Mutual TLS plus a separate random bearer token. The Cubie verifies the pinned CA and the Mac IP certificate; the Mac requires a client certificate with the correct purpose. Private LAN destinations only, no redirects or environment proxies, no HTTP fallback. |
-| Active station data | gocryptfs 2.6.1 encrypted contents and filenames: recordings, transcripts, exports, SQLite databases, Chromium profile, station credentials and Caddy keys. Multipart temporary files use the encrypted data directory. |
-| Mac data and recovery copies | FileVault is enabled. Private files have restricted permissions and are excluded from Git. Runtime inference runs under the existing outbound-IP sandbox, with loopback Ollama and installed models. |
-| SSH | Ed25519 key authentication required for `radxa`. The default password was replaced with a random recovery/sudo password; a separate key login was verified before and after the change. |
-| Previously exposed credentials | Station, worker, browser-controller and JWT secrets were rotated after encryption. Original account username/password remain unchanged. Existing sessions need a fresh login and pairing. |
+| Браузер → Radxa | HTTPS с собственным центром сертификации станции. HTTP GET/HEAD перенаправляются; остальные HTTP-запросы получают 426. Cookie обновления сессии и просмотра имеют Secure/HttpOnly; политика содержимого ограничена своим источником; ответы API используют `no-store`. Токены входа и сопряжения хранятся только в сессии вкладки. |
+| Radxa → Mac | Взаимный TLS и отдельный случайный токен. Станция проверяет доверенный центр и IP в сертификате Mac; Mac требует клиентский сертификат подходящего назначения. Только частные адреса локальной сети, без перенаправлений, прокси из окружения и перехода на HTTP. |
+| Рабочие данные станции | gocryptfs 2.6.1 шифрует содержимое и имена файлов: записи, расшифровки, документы, SQLite, профиль Chromium, секреты станции и ключи Caddy. Временные файлы загрузок находятся в зашифрованном каталоге данных. |
+| Данные Mac и копии восстановления | Включён FileVault. Приватные файлы имеют ограниченные права и исключены из Git. Обработка запускается с существующим ограничением исходящих IP-соединений; Ollama работает на внутреннем адресе Mac, модели установлены заранее. |
+| SSH | Обязательна аутентификация ключом Ed25519 для пользователя `radxa`. Стандартный пароль заменён случайным паролем восстановления/sudo; отдельный вход по ключу проверен до и после замены. |
+| Прежние секреты | После шифрования заменены токены станции, вычислителя, контроллера браузера и JWT. Исходные имя и пароль учётной записи приложения не менялись. Нужны повторный вход и сопряжение. |
 
-The Cubie kernel lacks dm-crypt, so this deployment uses a reversible FUSE vault
-instead of reformatting the board. Its encrypted backing directory is
-`/var/lib/meeting-vault/cipher`; its unlocked view is
-`/var/lib/meeting-vault/plain`. Bind mounts preserve the application's existing
-paths. Service startup guards prevent operation while the vault is locked. The
-board uses RAM-backed zram swap, with no disk swap observed during the audit.
+Ядро платы не поддерживает dm-crypt, поэтому установка использует обратимо
+подключаемое FUSE-хранилище без переформатирования устройства. Зашифрованные
+файлы находятся в `/var/lib/meeting-vault/cipher`, открытое представление —
+в `/var/lib/meeting-vault/plain`. Привязки каталогов сохраняют прежние пути
+приложения. Проверки запуска не позволяют сервисам работать с заблокированным
+хранилищем. Во время проверки на плате использовался zram в ОЗУ; подкачка
+на диск не обнаружена.
 
-The vault password is **not stored on the board**. It is sent on stdin over pinned
-SSH when unlocking. The browser CA was regenerated inside encrypted storage;
-only the public root certificate is trusted on the Mac. The worker CA private
-key stays on the Mac. The certificate creation script never overwrites an
-existing identity directory.
+**Пароль хранилища не сохраняется на плате.** При открытии он передаётся через
+стандартный ввод по SSH с проверкой закреплённого ключа устройства. Центр
+сертификации браузерного HTTPS заново создан внутри зашифрованного хранилища;
+Mac доверяет только его публичному корневому сертификату. Закрытый ключ центра
+сертификатов вычислителя остаётся на Mac. Сценарий создания сертификатов
+не перезаписывает существующий каталог удостоверений.
 
-## Use and recovery
+<a id="use-and-recovery"></a>
 
-Open **https://192.168.8.57/meeting-intelligence**. This Mac trusts the station CA
-for TLS. A different client needs the public CA installed through a trusted
-channel. Never distribute a private key or disable certificate verification.
-The mDNS hostname also has a certificate, but the literal IP avoids mDNS issues.
+## Использование и восстановление
 
-The installed Mac login agent now watches for the Cubie after a reboot and
-automatically unlocks it over pinned SSH, then starts all four station services.
-The Mac must have completed FileVault login and remain running on the LAN. The
-agent prevents idle sleep; it does not override lid closure or a deliberate sleep.
-For manual recovery, run from this workspace on the Mac:
+В прежней установке адрес станции —
+**https://192.168.8.57/meeting-intelligence**. Mac доверяет её центру сертификации.
+Другому клиенту нужен публичный корневой сертификат, полученный по доверенному
+каналу. Не передавайте закрытый ключ и не отключайте проверку сертификатов.
+Имя mDNS тоже имеет сертификат; IP использовался для обхода проблем mDNS.
+Для новой установки задайте собственные адреса и соответствующие сертификаты.
+
+После перезагрузки платы установленная на Mac служба следит за её появлением,
+открывает хранилище по SSH и запускает четыре сервиса станции. На Mac должен
+быть завершён вход после FileVault; компьютер должен работать в локальной сети.
+Служба предотвращает сон по бездействию, но не отменяет закрытие крышки или
+намеренный перевод в сон. При наличии приватной конфигурации прежней установки
+ручное восстановление выполняется из этого каталога на Mac:
 
 ```sh
 python3 scripts/station-vault.py unlock
 ```
 
-To stop the station and lock its data:
+Чтобы остановить станцию и заблокировать данные:
 
 ```sh
 python3 scripts/station-vault.py lock
 ```
 
-Unlock starts the archive, web server, Mac bridge and meeting browser. A deliberate
-lock pauses automatic unlock until an explicit unlock, including across reboot.
-The Carelink restore script disables station autostart. The station cannot serve
-its website while its TLS keys are locked.
+Разблокировка запускает архив, веб-сервер, связь с Mac и браузер совещаний.
+Явная блокировка останавливает автоматическое открытие до явной разблокировки,
+в том числе после перезагрузки. Сценарий восстановления прежнего приложения
+Carelink отключает автозапуск станции. Пока ключи TLS заблокированы,
+станция не может обслуживать сайт.
 
-Unattended unlock trusts the board's pinned SSH identity and the logged-in Mac.
-Compromise of either device or the board's unencrypted OS/SSH host key remains
-outside this protection boundary. Use a deliberate vault lock when automatic
-unlock is not wanted.
+Автоматическое открытие доверяет закреплённому SSH-ключу платы и Mac с
+выполненным входом. Компрометация устройств, незашифрованной ОС платы или
+её ключа SSH остаётся вне этой защиты. Если автоматическое открытие не нужно,
+выполните явную блокировку.
 
-Keep these **private, Git-ignored** files on the FileVault-protected Mac:
+Эти **приватные файлы, исключённые из Git**, хранятся на Mac с FileVault:
 
-| File | Purpose |
+| Файл | Назначение |
 | --- | --- |
-| `.local/security/vault-password` | Archive unlock credential; losing it loses access to the encrypted archive. |
-| `.local/security/board-admin` | SSH private key. |
-| `.local/security/board-sudo-password` | Board account recovery/sudo password; the old `radxa` password is retired. |
-| `.local/station-secrets.json` | Current station pairing, worker, browser and JWT credentials plus the existing app account password. |
-| `.local/security/worker-pki/` | Worker CA and device identities. Only the client key/certificate and public CA belong on the board. |
-| `.local/security/station-browser-ca-v2.crt` | Public browser CA, safe to distribute after fingerprint verification. |
+| `.local/security/vault-password` | Секрет открытия архива. При его потере теряется доступ к зашифрованному архиву. |
+| `.local/security/board-admin` | Закрытый ключ SSH. |
+| `.local/security/board-sudo-password` | Пароль восстановления/sudo платы; прежний пароль `radxa` больше не используется. |
+| `.local/station-secrets.json` | Текущие токены станции, вычислителя, браузера, JWT и существующий пароль приложения. |
+| `.local/security/worker-pki/` | Центр сертификации и удостоверения устройств. На плату передаются только клиентский ключ/сертификат и публичный сертификат центра. |
+| `.local/security/station-browser-ca-v2.crt` | Публичный центр для браузера; допускает передачу после проверки отпечатка. |
 
-Worker device certificates expire after 90 days. Renew them before expiry; do not
-solve expiry by disabling verification. The server certificate includes the Mac
-IP, so a DHCP change requires reissuing it and updating the configured address.
-Reserve both LAN addresses. `scripts/create-worker-pki.py` provisions a fresh
-identity set for an installation; renewals and CA changes need a coordinated
-switch on both devices.
+Сертификаты устройств действуют **90 дней**. Обновляйте их заранее; отключение
+проверки не является способом устранить истечение срока. Сертификат сервера
+содержит IP Mac, поэтому смена адреса требует перевыпуска и обновления настройки.
+Закрепите адреса обоих устройств. `scripts/create-worker-pki.py` создаёт новый
+набор удостоверений; обновление и смена центра требуют согласованной замены
+на обеих сторонах.
 
-Consistent snapshots and file manifests were verified before migration. Recovery
-archives exist under `.local/security/` on the Mac and
-`/var/lib/meeting-vault/plain/rollback/` inside the Cubie vault. Plaintext migration
-copies and retired deployment credential files are removed only after verifying
-their hashes against those copies. Keep an additional encrypted recovery copy
-on separate media before relying on this as a long-term archive.
+Перед переносом проверены согласованные снимки данных и файловые манифесты.
+В прежней установке копии восстановления находятся в `.local/security/` на Mac
+и `/var/lib/meeting-vault/plain/rollback/` внутри хранилища платы. Незашифрованные
+промежуточные копии и старые файлы секретов удаляются только после сверки хешей.
+Для длительного хранения нужна дополнительная зашифрованная копия на отдельном
+носителе. Приватные копии прежней установки в репозиторий не входят.
 
-Carelink code and the original private `backups/carelink-20260911/` snapshots remain
-untouched. To restore Carelink, unlock the vault and follow [RUNBOOK.md](RUNBOOK.md).
-The restore script also restores the old Caddy state and removes Caddy's vault
-guard so Carelink can reboot independently. SSH retains key authentication. Do
-not run the station unlock/start command after restoring Carelink until explicitly
-reactivating the station.
+Код Carelink и исходные приватные копии `backups/carelink-20260911/` оставлены
+нетронутыми. Для восстановления Carelink сначала откройте хранилище и следуйте
+[руководству](RUNBOOK.md). Сценарий возвращает прежний Caddy и снимает его
+зависимость от хранилища, чтобы Carelink мог перезагружаться отдельно. Вход
+по SSH остаётся ключевым. После восстановления Carelink не запускайте станцию
+до её явной повторной активации.
 
-## Verified boundaries and remaining limits
+<a id="verified-boundaries-and-remaining-limits"></a>
 
-Live checks accepted a correctly authenticated device and rejected clients with
-no certificate. Tests also rejected untrusted CAs, wrong server names, and a
-server certificate used as a client identity. HTTPS login, archive reads and
-exports passed in Chrome with normal certificate verification. A complete
-120-second synthetic recording finished in 62.567 seconds through HTTPS, mutual
-TLS, local inference and encrypted archival. A lock/unlock test confirmed that
-services do not start while locked, a wrong vault password is rejected, the Mac
-link reconnects and the cached PDF survives byte-for-byte. Retired station tokens
-are rejected. All 106 worker/station tests pass after the startup/join/audio changes.
-An actual board reboot recovered HTTPS, the encrypted archive, the Mac connection
-and the browser without intervention in 80.745 seconds from the reboot request.
-The archived PDF remained byte-identical.
+## Проверенные границы и ограничения
 
-Encryption protects against LAN interception and reading the locked archive.
-It does not protect data from an administrator or malware on an unlocked device.
-Local loopback hops and in-memory processing are not separately encrypted. The
-Cubie OS, metadata in system logs, file sizes and pre-existing Carelink files are
-outside the station archive encryption boundary. Deleting old files cannot prove
-forensic erasure of previous eMMC blocks; no whole-device encryption claim is made.
-Browser/player memory and intentionally downloaded exports are controlled by the
-client device. The Mac's FileVault protects local exports at rest.
+Аппаратные проверки принимали корректное устройство и отклоняли клиента без
+сертификата, недоверенный центр, неверное имя сервера и серверный сертификат
+в роли клиентского. Вход через HTTPS, чтение архива и экспорт прошли в Chrome
+с обычной проверкой сертификатов.
 
-Google Meet/Zoom/Teams require the provider's internet services. That optional
-capture path is not a fully offline meeting. Upload/text processing uses local
-models and local assets; physical WAN-disconnection acceptance remains pending.
-This is a tested hackathon hardening pass, not an independent penetration test.
+Полный путь для синтетической записи длительностью 120 секунд занял **62,567
+секунды**: HTTPS, взаимный TLS, локальная обработка и зашифрованное хранение.
+При блокировке и открытии проверено, что сервисы не запускаются с закрытым
+архивом, неверный пароль отклоняется, связь с Mac восстанавливается, а
+сохранённый PDF побайтово совпадает. Прежние токены станции отклонены.
+После тогдашних изменений запуска и записи прошли все 106 тестов станции и
+вычислителя. Это исторический набор от 11 сентября; текущие результаты —
+[в отдельном отчёте](verification/foundations-20260923/README.md).
 
-Implementation references: [HTTPX TLS contexts and client certificates](https://www.python-httpx.org/advanced/ssl/),
-[gocryptfs design](https://nuetzlich.net/gocryptfs/),
-[gocryptfs release 2.6.1](https://github.com/rfjakob/gocryptfs/releases/tag/v2.6.1),
-[Apple FileVault](https://support.apple.com/guide/security/volume-encryption-with-filevault-sec4c6dc1b6e/web).
+Реальная перезагрузка платы восстановила HTTPS, архив, связь с Mac и браузер
+без вмешательства за **80,745 секунды** от запроса перезагрузки. Сохранённый PDF
+не изменился. Эти замеры относятся к указанной аппаратной установке.
+
+TLS защищает от перехвата в сети, а шифрование архива — от чтения заблокированных
+данных. Администратор или вредоносная программа на разблокированном устройстве
+всё ещё могут читать данные. Внутренние соединения одного компьютера и обработка
+в памяти отдельно не шифруются. ОС платы, метаданные системных журналов, размеры
+файлов и прежние файлы Carelink находятся вне границ шифрования архива.
+Удаление файлов не доказывает физическое стирание старых блоков eMMC;
+шифрование всей платы не заявляется. Память браузера и скачанные документы
+контролирует клиентское устройство; на Mac данные на диске защищает FileVault.
+
+Google Meet/Zoom/Teams требуют интернета к провайдеру совещаний. Этот отдельный
+путь записи не является полностью автономным. Загрузка файла и обработка
+текста используют локальные модели и ресурсы; проверка с физически отключённым
+внешним интернетом остаётся открытой. Это проверенные меры защиты прототипа,
+а не независимое испытание на проникновение.
+
+Первичные технические источники:
+[контексты TLS и клиентские сертификаты HTTPX](https://www.python-httpx.org/advanced/ssl/),
+[устройство gocryptfs](https://nuetzlich.net/gocryptfs/),
+[gocryptfs 2.6.1](https://github.com/rfjakob/gocryptfs/releases/tag/v2.6.1),
+[FileVault](https://support.apple.com/guide/security/volume-encryption-with-filevault-sec4c6dc1b6e/web).

@@ -21,7 +21,7 @@
     <text x="451" y="216" font-size="17" fill="#536976">Radxa · небольшой компьютер</text>
     <text x="451" y="244" font-size="17" fill="#536976">Микрофон и очередь</text>
     <text x="451" y="272" font-size="17" fill="#536976">Зашифрованный архив</text>
-    <text x="892" y="183" font-size="22" font-weight="700" fill="#FFF">Локальный вычислитель</text>
+    <text x="892" y="183" font-size="22" font-weight="700" fill="#FFF">Вычислитель</text>
     <text x="892" y="216" font-size="17" fill="#C5D6E0">Mac · запускает ИИ-модели</text>
     <text x="892" y="244" font-size="17" fill="#C5D6E0">Whisper → Sherpa → Qwen</text>
     <text x="892" y="272" font-size="17" fill="#C5D6E0">Речь → голоса → черновик</text>

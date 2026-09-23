@@ -35,7 +35,7 @@
     <path d="m877 230 3 3 5-6" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <text x="898" y="234" font-size="15" font-weight="600" fill="#1C5047">Кто · Что · Когда</text>
     <text x="874" y="256" font-size="13" fill="#476C65">Со ссылкой на реплику</text>
-    <text x="864" y="309" font-size="14" font-weight="600" fill="#486071">Проверено человеком</text>
+    <text x="881" y="309" font-size="14" font-weight="600" fill="#486071">Проверено человеком</text>
     <rect x="707" y="148" width="104" height="126" rx="18" fill="#22495B" stroke="#6CA29E" stroke-opacity=".5"/>
     <g stroke="#86D8CA" stroke-width="4" stroke-linecap="round"><path d="M729 202V220M741 185V237M753 196V226M765 176V246M777 193V229M789 201V221"/></g>
     <path d="M804 295c18 0 32-8 32-8s14 8 32 8v27c0 23-32 38-32 38s-32-15-32-38Z" fill="#D8BE8B" stroke="#183C4E" stroke-width="5"/>
