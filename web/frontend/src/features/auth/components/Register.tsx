@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScriberrLogo } from "@/components/ScriberrLogo";
+import { ProductLogo } from "@/components/ProductLogo";
 import { useNavigate } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Eye, EyeOff, Check, X } from "lucide-react";
@@ -23,10 +23,10 @@ interface PasswordStrength {
 }
 
 export function Register({ onRegister }: RegisterProps) {
-	return meetingStationMode ? <StationAuth onAuthenticated={onRegister} setup /> : <ScriberrRegister onRegister={onRegister} />;
+	return meetingStationMode ? <StationAuth onAuthenticated={onRegister} setup /> : <LegacyRegister onRegister={onRegister} />;
 }
 
-function ScriberrRegister({ onRegister }: RegisterProps) {
+function LegacyRegister({ onRegister }: RegisterProps) {
 	const navigate = useNavigate();
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
@@ -109,10 +109,10 @@ function ScriberrRegister({ onRegister }: RegisterProps) {
 			<div className="w-full max-w-md space-y-8">
 				<div className="text-center">
 					<div className="flex justify-center mb-6">
-						<ScriberrLogo onClick={() => navigate('/')} />
+						<ProductLogo onClick={() => navigate('/')} />
 					</div>
 					<h2 className="text-3xl font-bold text-carbon-900 dark:text-carbon-100">
-						Welcome to Scriberr
+						Welcome to Meeting Station
 					</h2>
 					<p className="mt-2 text-carbon-600 dark:text-carbon-400">
 						Create your admin account to get started
@@ -123,7 +123,7 @@ function ScriberrRegister({ onRegister }: RegisterProps) {
 					<CardHeader>
 						<CardTitle className="text-carbon-900 dark:text-carbon-100">Setup Admin Account</CardTitle>
 						<CardDescription className="text-carbon-600 dark:text-carbon-400">
-							This will be the only account that can access this Scriberr instance
+							This will be the only account that can access this Meeting Station instance
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -242,7 +242,7 @@ function ScriberrRegister({ onRegister }: RegisterProps) {
 
 				<div className="text-center">
 					<p className="text-sm text-carbon-600 dark:text-carbon-400">
-						This account will have full administrative access to your Scriberr instance
+						This account will have full administrative access to your Meeting Station instance
 					</p>
 				</div>
 			</div>

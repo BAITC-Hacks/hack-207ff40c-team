@@ -1,5 +1,16 @@
 # Source and reuse record
 
+## README identity and visual evidence
+
+The participant supplied the MEET-BOX wordmark, Samruk-Kazyna logo, enclosure
+concept render and rotating enclosure GIF on 2026-09-23. Their unmodified files
+and original filenames are recorded in [README visual provenance](assets/readme/README.md).
+Samruk-Kazyna identifies the challenge owner; the enclosure artwork represents a
+concept. The four interface screenshots show the current application against
+explicitly synthetic acceptance data, with real local requests and no model
+inference. They are separate from the enclosure illustrations and speech-quality
+evidence. No new artwork license or third-party endorsement is claimed.
+
 ## Existing application
 
 Cloned on 2026-09-23 from

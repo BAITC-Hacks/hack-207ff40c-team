@@ -22,39 +22,24 @@ export default defineConfig(({ mode }) => {
       transformIndexHtml(html) {
         if (!station) return html
         return html
-          .replace('<title>Scriberr - Audio Transcription</title>', '<title>Meeting Station · Your private meeting workspace</title>')
-          .replace('href="/favicon.svg"', 'href="/station-mark.svg"')
-          .replace('<link rel="apple-touch-icon" href="/icon512_rounded.png" />', '<meta name="theme-color" content="#14776b" /><meta name="application-name" content="Meeting Station" /><meta name="description" content="Your private workspace for meeting transcripts, decisions, action items and reports." />')
+          .replace('<meta name="application-name" content="Meeting Station" />', '<meta name="theme-color" content="#14776b" /><meta name="application-name" content="Meeting Station" /><meta name="description" content="Your private workspace for meeting transcripts, decisions, action items and reports." />')
       },
     },
     VitePWA({
       registerType: 'autoUpdate',
       workbox: { navigateFallbackDenylist: [/^\/api\//] },
-      includeAssets: station ? ['station-mark.svg'] : ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['station-mark.svg'],
       manifest: {
-        name: station ? 'Meeting Station' : 'Scriberr',
-        short_name: station ? 'Meeting Station' : 'Scriberr',
+        name: 'Meeting Station',
+        short_name: 'Meeting Station',
         description: station ? 'Private meeting transcripts, decisions and next steps' : 'Offline Audio Transcription',
         theme_color: station ? '#ef6c22' : '#8936FF',
         background_color: station ? '#f7f8f4' : '#2EC6FE',
         display: 'standalone',
         orientation: 'any',
         start_url: station ? '/meeting-intelligence' : '/',
-        id: station ? 'meeting-station' : 'scriberr-transcription',
-        icons: station ? [{ src: 'station-mark.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }] : [
-          {
-            src: 'icon512_maskable.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          },
-          {
-            src: 'icon512_rounded.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
-          }
-        ]
+        id: station ? 'meeting-station' : 'scriberr-transcription', // Retain the installed legacy app identity.
+        icons: [{ src: 'station-mark.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
       }
     })
   ],

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScriberrLogo } from "@/components/ScriberrLogo";
+import { ProductLogo } from "@/components/ProductLogo";
 import { useNavigate } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Loader2, AlertCircle } from "lucide-react";
@@ -14,10 +14,10 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
-	return meetingStationMode ? <StationAuth onAuthenticated={onLogin} /> : <ScriberrLogin onLogin={onLogin} />;
+	return meetingStationMode ? <StationAuth onAuthenticated={onLogin} /> : <LegacyLogin onLogin={onLogin} />;
 }
 
-function ScriberrLogin({ onLogin }: LoginProps) {
+function LegacyLogin({ onLogin }: LoginProps) {
 	const navigate = useNavigate();
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
@@ -74,7 +74,7 @@ function ScriberrLogin({ onLogin }: LoginProps) {
 							className="flex justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95"
 							onClick={() => navigate('/')}
 						>
-							<ScriberrLogo />
+							<ProductLogo />
 						</div>
 
 						<div className="space-y-2">
