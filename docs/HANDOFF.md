@@ -24,6 +24,13 @@ open a real archive. `docs/assets/readme/capture-receipt.json` records this scop
 Updated `docs/ATTRIBUTION.md` with visual provenance. All README visuals are local
 repository assets; no external badge/image service is required.
 
+Documentation validation: all README/local documentation image and file links
+resolve, all eight images decode, all four supplied assets retain their original
+SHA-256, `python3 scripts/harness.py check` exits 0 and `git diff --check` passes.
+Link checking found that the root `LICENSE` referenced by the existing docs was
+absent from this checkout. Restored its exact bytes from the preserved application
+worktree; all four preserved worktrees contain the same original MIT notice.
+
 The README distinguishes implemented local controls from open security/access
 work, and current exports from future reminders/task continuity. Existing audit
 findings remain open. This work changes documentation/assets only; no product

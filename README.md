@@ -115,10 +115,10 @@ flowchart TB
     Secretary["Секретарь · браузер"]
     subgraph Private["Локальный контур заказчика"]
         UI["React · просмотр, проверка, экспорт"]
-        Station["Local station · Radxa / локальный компьютер\nЗапись, API, очередь, архив"]
-        Archive[("Записи и версии протоколов\nSQLite + файлы")]
-        Worker["Local inference worker · рабочая станция\nНормализация, модели, проверка, документы"]
-        Models["FFmpeg → Whisper → Sherpa ONNX\nOllama / Qwen"]
+        Station["Local station · Radxa / локальный компьютер<br/>Запись, API, очередь, архив"]
+        Archive[("Записи и версии протоколов<br/>SQLite + файлы")]
+        Worker["Local inference worker · рабочая станция<br/>Нормализация, модели, проверка, документы"]
+        Models["FFmpeg → Whisper → Sherpa ONNX<br/>Ollama / Qwen"]
         UI -->|"station token"| Station
         Station --- Archive
         Station -->|"worker token · loopback / LAN + mTLS"| Worker
@@ -292,8 +292,16 @@ make check    # Структура и регрессии harness
 make verify   # Настроенные проверки приложения и реального интерфейса
 ```
 
-Для браузерных проверок нужен установленный тестовый Chromium;
-[инструкция проверки](docs/DEVELOPMENT.md) описывает подготовку.
+Для браузерных проверок один раз установите тестовый Chromium в локальный каталог
+(эта команда скачивает браузер, а не модели):
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.local/browsers" web/frontend/node_modules/.bin/playwright install chromium --only-shell
+```
+
+На Linux также нужны системные зависимости браузера; их установка показана в
+[CI workflow](.github/workflows/submission-checks.yml). Подробнее о проверках —
+[DEVELOPMENT.md](docs/DEVELOPMENT.md).
 Эти результаты не измеряют ASR и качество моделей. **RU/KZ/смешанная речь,
 диаризация, скорость полного цикла, работа при отключённой внешней сети и
 восстановление физического устройства ещё требуют отдельного приёмочного прогона.**
