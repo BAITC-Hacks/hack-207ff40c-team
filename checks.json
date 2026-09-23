@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "commands": [],
+  "help": "In BUILD mode add named argv commands with kind test, build, and smoke. Use {python} for this interpreter. No shell strings.",
+  "example": {
+    "name": "product-unit-tests",
+    "kind": "test",
+    "argv": [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "product_tests",
+      "-v"
+    ],
+    "timeout_seconds": 120
+  }
+}

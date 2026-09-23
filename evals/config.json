@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "baseline_argv": [],
+  "proposed_argv": [],
+  "timeout_seconds": 30,
+  "cases_file": "evals/cases.jsonl",
+  "help": "Each adapter receives the case input as JSON on stdin and prints exactly one JSON value to stdout. Logs go to stderr. Do not use the harness tests as product evaluation."
+}

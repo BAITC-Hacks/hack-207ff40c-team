@@ -1,0 +1,16 @@
+{
+  "event_name": null,
+  "track": "innovation",
+  "challenge_text": null,
+  "rules_source": null,
+  "prework_policy": "unknown",
+  "hardware_policy": "unknown",
+  "required_technologies": [],
+  "judging_rubric": [],
+  "team_size": null,
+  "remaining_hours": null,
+  "compute_available": null,
+  "approved_api_budget_usd": 0,
+  "data_allowed": "public or clearly labeled synthetic; verify event rules",
+  "notes": "Replace null fields with actual information. Do not infer an official topic from the track name."
+}
