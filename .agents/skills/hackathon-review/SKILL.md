@@ -1,13 +1,18 @@
 ---
 name: hackathon-review
-description: Independently challenge implementation, novelty claims, evaluations and the final demo; use after a build chunk.
+description: Check whether the intended user actually gains the promised capability and whether the evidence and implementation support it.
 ---
 
-Review rather than flatter the builder. Check theme fit, constraints, data leakage, license
-status, cost, security assumptions and any claim that exceeds the evidence. Inspect code and
-exercise the user path. Run `python3 scripts/harness.py verify` and `python3 scripts/evaluate.py`
-only after reviewing their configured commands. Report actual exit codes and raw report paths.
-Test empty, malformed, boundary, conflicting and interrupted cases. Check that failed runs remain
-in the denominator and that baseline implementation is not sabotaged. A polished screen is not
-an end-to-end computation. Never waive a failing check just to mark the product ready.
-Finish docs/DEMO.md and HANDOFF; separate proven behavior, prototype assumptions and future work.
+Read the decision card and assigned change. First ask: who benefits, what changed in
+their task, and would the closest accessible alternative give the same result?
+Challenge unsupported demand/access assumptions. Accept familiar technology when a real
+workflow or access improvement is shown; don't demand an original algorithm unless claimed.
+
+Check the same task/input, fair baseline, independent targets, failure counts, real user
+path/export and relevant technical limits. Distinguish measured outcomes from hypotheses
+and upstream results. In PREPARE inspect plans only; never activate or install. Read-only
+specialists give reproduction steps to the integrator for checks that write files.
+
+Return at most three decision-changing findings: evidence, consequence for the user,
+and smallest fix. Default 200 words; no style-only review or new documentation chores.
+If users were unavailable, state the remaining validation gap without fabricating proof.

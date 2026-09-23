@@ -1,48 +1,56 @@
-# Start here
+# Start here — Meeting Station
 
-This is preparation tooling, not a completed hackathon product.
-No API key, paid service, model download, or extra Python package is needed to run it.
-Python 3.10+ is required. A logged-in coding CLI is needed only to use an agent.
+The application and Codex harness now share this repository root. Start with the
+[README](README.md) for the product and [architecture](docs/ARCHITECTURE.md) for
+component ownership. The actual Samruk-Kazyna case is recorded in `brief.json`;
+`state.json` is already BUILD after the user's implementation request. The
+activation-step deviation is recorded in [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-## Tonight / before the brief
-Keep state.json in prepare mode. Do not infer event rules or a hardware ban.
-Run `python3 scripts/harness.py doctor`, `python3 scripts/harness.py check`, and
-`python3 -m unittest discover -s tests -v` from this directory.
-A structural check passing means the HARNESS is intact, not the product is correct.
+## Continue this project
 
-Paste into your installed Codex session:
+Read `AGENTS.md`, `brief.json`, `state.json` and `docs/HANDOFF.md`. Use the existing
+React frontend, station API and local worker. [LOCAL_SETUP.md](docs/LOCAL_SETUP.md)
+contains setup; [DEVELOPMENT.md](docs/DEVELOPMENT.md) describes the workflow.
+From this directory:
 
-Read AGENTS.md and START_HERE.md. Stay in PREPARE mode. Run the harness checks,
-inspect the available local toolchain without installing anything, and read the research
-catalog. Put three provisional directions, their critical risks and their first falsifiable
-experiments in docs/DECISION.md. Do not invent the official brief, implement submission
-code, download dependencies/models, or enable paid APIs. Update docs/HANDOFF.md.
-Stop after the preparation report.
+```sh
+make help
+python3 scripts/harness.py doctor
+make check
+make verify
+```
 
-## When the official challenge is announced
-Fill challenge_text and rules_source in brief.json with the real instructions, along
-with any known rubric, mandatory technology and API budget. Preserve the quoted source.
-Only the human should run the next command, after confirming development may begin:
+`make check` uses only the standard-library harness. `make verify` also needs the
+installed application/test dependencies and test Chromium. It builds the frontend
+and runs actual interface/export checks with labeled synthetic output; speech-model
+accuracy is a separate acceptance task on provisioned hardware. No paid API or
+cloud meeting-content inference is authorized.
+
+## Future challenge / mode changes
+
+For a new challenge, record the real text/source and rules rather than inferring
+them. PREPARE permits research, inspection and authorized harness work only.
+When explicit development authorization is available, the human runs the activation
+command below unless that exact step has been explicitly delegated:
 
 `python3 scripts/harness.py activate --confirm-rules --confirm-start`
 
-Paste into the CLI:
+Preserve the user's chosen direction. Use one decision card, test the deciding
+assumption and complete one useful path. This delivery is submission-only; no
+live demo is requested. Retain attribution, real check results and technical limits.
 
-Read the updated brief.json and state.json. Use the hackathon-select skill. Compare three
-brief-specific candidates and choose one. Build the smallest measurable core experiment
-before any dashboard. Then implement one complete user workflow, real product checks,
-baseline/proposed evaluation adapters and a 90-second demonstration. Respect the approved
-budget and scope. Record failures and attribution. Do not weaken tests to claim success.
+## Optional agents
 
-## Useful commands
-- `python3 scripts/harness.py doctor`: inspect tool availability, not credentials.
-- `python3 scripts/harness.py check`: validate this harness and Codex skills.
-- `python3 scripts/harness.py status`: show current state and official brief.
-- `python3 scripts/harness.py snapshot`: write a current file-hash manifest, excluding generated/vendor/private files.
-- `python3 scripts/harness.py verify`: run configured product tests, build and smoke checks. Empty config fails.
-- `python3 scripts/evaluate.py`: run paired baseline/proposed cases. Empty config fails.
+Project .codex/ contains three read-only specialists: novelty_scout (user need/change),
+feasibility_scout (smallest build), independent_reviewer (outcome and correctness).
+They are available on demand; the primary integrates. Load changes in a new trusted
+session; existing sessions can use the same task contracts. See docs/SPRINT.md for pacing.
 
-On Windows substitute `py -3` for `python3`. Use `codex.cmd` when PowerShell blocks codex.ps1;
-otherwise use your normal `codex` command. Do not change execution policy globally.
-Agent prompts are guidance. Activation flags do not prevent arbitrary file edits or enforce
-an organizer's rules. Ordinary CLI permissions remain the actual execution boundary.
+Optional Ultra launch with a supporting selected model:
+`codex -c 'model_reasoning_effort="ultra"'`
+Specialists default to high effort. Model, account, sandbox and service tier stay unchanged.
+Use the normal session if Ultra is unavailable. No global setup is required.
+
+`harness.py status` shows brief/state. In BUILD, configure checks.json and run
+`harness.py verify`; use `scripts/evaluate.py` for paired JSON adapter evaluations.
+Windows: use `py -3` and `codex.cmd` as needed.

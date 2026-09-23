@@ -1,0 +1,6 @@
+# Project-local concurrency; model, account, approvals and service tier are inherited.
+# For Ultra on a supporting selected model: codex -c 'model_reasoning_effort="ultra"'
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_reasoning_effort = "high"

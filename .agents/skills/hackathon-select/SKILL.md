@@ -1,12 +1,28 @@
 ---
 name: hackathon-select
-description: Turn the actual hackathon brief into three compared project options and select one measurable build.
+description: Choose a hackathon direction by the meaningful change it creates for a specific user and whether we can demonstrate it in time.
 ---
 
-Read AGENTS.md, state.json, brief.json, research/catalog.json and docs/HANDOFF.md.
-If the official challenge is missing, produce only provisional options, with no submission code.
-When supplied, extract the user, mandatory constraints, deliverables, rubric and budget.
-Compare exactly three options with the official rubric, or the labeled provisional rubric.
-For each specify an executable core test, a baseline and a failure that would kill the idea.
-Choose one; document the rationale and scope exclusions in docs/DECISION.md.
-Never treat a permission inferred from the word innovation as an official rule.
+Read brief.json, state.json and docs/HANDOFF.md. If choosing from scratch, compare three short
+options; preserve a user-selected direction. Without the official brief, keep options
+provisional. Put the choice in docs/DECISION.md; no separate assessment form or scores.
+
+Use this one-card format:
+- Person and situation: who needs this, when, and what blocks them now?
+- Before -> after: what can they do that they cannot practically do today?
+- Evidence: observed, reported or hypothesis; closest usable alternative and its gap.
+- Our contribution: what creates that change; attribute the existing mechanism.
+- First test: same task with/without our addition, independently checked outcome,
+  smallest useful improvement, and a result that would make us stop.
+- Delivery: smallest complete path, hardest technical boundary, available data/toolchain,
+  reuse permission, remaining-time estimate and fallback.
+
+Follow the actual event rubric. Otherwise prioritize a meaningful, credible user change
+that fits the remaining time. Complexity and new algorithms are not prerequisites.
+A known method can qualify through a demonstrated access or workflow improvement;
+check the claimed barrier rather than rejecting it merely because the method exists.
+Technical originality, when claimed or required, needs its own evidence.
+
+Use one close alternative unless uncertainty requires more. Keep user-value hypotheses
+explicit if users are unavailable; don't make interviews a blanket blocker. After BUILD
+authorization, test the deciding unknown promptly. Narrow if the benefit or path fails.

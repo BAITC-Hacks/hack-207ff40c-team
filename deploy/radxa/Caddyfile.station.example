@@ -1,0 +1,35 @@
+# Install this station's CA on each trusted client. Never bypass certificate
+# validation. Update the IP and issue a matching certificate if DHCP changes.
+{
+	auto_https disable_redirects
+}
+
+http:// {
+	@get method GET HEAD
+	redir @get https://192.168.8.57{uri} 308
+	respond "Use HTTPS. Credentials and uploads are not accepted over HTTP." 426
+}
+
+https://192.168.8.57, radxa-cubie-a7a.local {
+	tls internal
+	encode zstd gzip
+	header {
+		-Server
+		X-Robots-Tag "noindex, nofollow, noarchive"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), geolocation=()"
+	}
+	# The authenticated station viewer supplies its own CSP for noVNC.
+	@app not path /api/meeting-worker/*
+	header @app Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+	@private path /api/*
+	header @private Cache-Control "no-store"
+	handle_path /api/meeting-worker/* {
+		reverse_proxy 127.0.0.1:8766
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8081
+	}
+}

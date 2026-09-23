@@ -16,7 +16,17 @@ class HarnessTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)/'repo'
-        shutil.copytree(SOURCE,self.root,ignore=shutil.ignore_patterns('reports','__pycache__','.git','.venv','node_modules','third_party'))
+        # These tests exercise the harness contract, not the installed application
+        # or private local archives. Copy only its actual required fixture files.
+        paths = set(harness.REQUIRED)
+        paths.update(f'.agents/skills/{name}/SKILL.md' for name in harness.SKILLS)
+        for name in paths:
+            target = self.root/name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(SOURCE/name, target)
+        harness.write_json(self.root/'state.json', {'mode':'prepare','rules_confirmed':False,'official_start_confirmed':False})
+        harness.write_json(self.root/'brief.json', {'challenge_text':None,'rules_source':None})
+        harness.write_json(self.root/'checks.json', {'version':1,'commands':[]})
     def tearDown(self):
         self.tmp.cleanup()
     def authorize(self):
@@ -73,9 +83,14 @@ class HarnessTests(unittest.TestCase):
         (self.root/'.env').write_text('SECRET=not-real')
         (self.root/'node_modules').mkdir()
         (self.root/'node_modules/leak').write_text('skip')
+        for directory in ('.local','worktrees','data','models','backups'):
+            (self.root/directory).mkdir()
+            (self.root/directory/'private.txt').write_text('synthetic-private-fixture')
         snap = harness.snapshot(self.root)['sha256']
         self.assertNotIn('.env',snap)
         self.assertNotIn('node_modules/leak',snap)
+        for directory in ('.local','worktrees','data','models','backups'):
+            self.assertNotIn(directory+'/private.txt',snap)
         self.assertIn('AGENTS.md',snap)
     def test_duplicate_command_names_rejected(self):
         self.authorize(); self.config()

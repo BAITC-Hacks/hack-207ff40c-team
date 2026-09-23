@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import shutil
@@ -17,8 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ('hackathon-scout', 'hackathon-select', 'hackathon-build', 'hackathon-review')
 REQUIRED = ('AGENTS.md','START_HERE.md','brief.json','state.json','checks.json',
             'research/catalog.json','evals/config.json','evals/cases.jsonl',
-            'scripts/evaluate.py','docs/HANDOFF.md')
-SKIP_DIRS = {'.git','.venv','venv','node_modules','__pycache__','reports','third_party','dist','.next'}
+            'scripts/evaluate.py','docs/SPRINT.md','docs/HANDOFF.md',
+            '.codex/config.toml','.codex/agents/novelty_scout.toml',
+            '.codex/agents/feasibility_scout.toml','.codex/agents/independent_reviewer.toml')
+SKIP_DIRS = {'.git','.venv','venv','node_modules','__pycache__','reports','third_party',
+             'dist','.next','.local','.pytest_cache','worktrees','data','models','backups'}
 
 
 def stamp() -> str:
@@ -44,13 +48,16 @@ def build_authorized(root: Path) -> bool:
 
 def snapshot(root: Path) -> dict:
     hashes = {}
-    for p in sorted(root.rglob('*')):
-        relative = p.relative_to(root)
-        if p.is_symlink() or not p.is_file() or set(relative.parts) & SKIP_DIRS:
-            continue
-        if (p.name.startswith('.env') and p.name != '.env.example') or p.suffix in {'.pyc','.log'}:
-            continue
-        hashes[str(relative).replace('\\','/')] = hashlib.sha256(p.read_bytes()).hexdigest()
+    for directory, dirs, files in os.walk(root, followlinks=False):
+        dirs[:] = sorted(name for name in dirs if name not in SKIP_DIRS
+                         and not name.endswith('.egg-info') and not (Path(directory)/name).is_symlink())
+        for name in sorted(files):
+            p = Path(directory)/name
+            if p.is_symlink() or not p.is_file():
+                continue
+            if (p.name.startswith('.env') and p.name != '.env.example') or p.suffix in {'.pyc','.log'}:
+                continue
+            hashes[p.relative_to(root).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
     return {'created_at_utc': datetime.now(timezone.utc).isoformat(), 'sha256':hashes,
             'note':'Local file manifest only, not tamper-proof evidence or organizer approval.'}
 

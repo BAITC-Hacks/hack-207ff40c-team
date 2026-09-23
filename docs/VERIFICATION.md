@@ -1,20 +1,29 @@
-# Verification receipt
+# Harness verification
 
-Tested in this environment on 2026-09-23 with Python 3.13.5 on Linux.
+2026-09-23, Python 3.14.6 on Darwin arm64: harness structure passed; all 33 functional
+harness/evaluator tests passed. See HANDOFF.md for commands, changes and limits.
+The deleted assessment feature's 17 tests were retired with it. That preparation
+run did not evaluate a product; these harness tests were not counted as product evidence.
+HARNESS_TEST_LOG.txt is the original scaffold's historical log, not this run's receipt.
 
-- Harness structure check: passed.
-- Harness and paired-evaluator unit/integration checks: 32 tests passed.
-- Verified behaviors include missing-config refusal, PREPARE-mode refusal, explicit activation,
-  skill-copy consistency, independent target comparison, type-sensitive JSON comparisons,
-  actual adapter subprocess execution, failed-baseline accounting, timeouts and report generation.
-- The unit tests contain toy adapters only. They are not research results or product benchmarks.
-- No Codex or Claude executable was available here; actual CLI discovery/login was not tested.
-- macOS and Windows execution were not tested here. The Python scripts use cross-platform
-  standard-library interfaces, but local shell commands and dependencies still need checking.
-- No upstream research repository was executed. The starter contains links and research notes,
-  not the third-party algorithms or a finished application.
+After the user supplied the case and authorized improvement, `checks.json` was
+configured with the selected product's build, backend/local-HTTP tests, lint and
+real browser acceptance. The integrated `python3 scripts/harness.py verify` run
+passed all four commands (exit 0): 171 backend tests and two browser workflows,
+plus the build and lint. Dependency consistency also passed.
 
-Repeat locally: `python3 -m unittest discover -s tests -v`.
+Raw receipt: [verification JSON](verification/verification-20260923T093456358250Z-5e27cb.json).
+The source package contains copies of these raw logs in `docs/verification/`.
+Synthetic supplied transcripts exercised correction, omitted-task recovery and
+downloaded DOCX/PDF content. Model inference and real language accuracy were not
+tested. See [product evidence](SUBMISSION_NOTES.md).
 
-The tests disable Python site startup only in their standard-library toy child processes,
-to avoid unrelated environment startup delays. Actual product commands run exactly as configured.
+After consolidation into this repository root, all six configured checks passed
+again: harness structure, 33 harness regressions, production frontend build,
+171 backend/local HTTP tests, lint and two real browser workflows. The harness
+fixtures now initialize explicit test state and copy only required files;
+snapshots prune private runtime/model directories before traversal.
+Root receipt: [verification JSON](verification/verification-20260923T095442120502Z-b47d75.json).
+Application-source parity (194 files), Python dependency consistency, the preserved
+Git bundle and whitespace checks also passed. This cleanup installs no dependencies
+and leaves the root changes uncommitted for the user.

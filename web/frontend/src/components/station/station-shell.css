@@ -1,0 +1,215 @@
+.ms-auth,
+.ms-app-layout {
+  --ms-paper: #f6f6f4;
+  --ms-card: #ffffff;
+  --ms-panel-2: #f0f0ed;
+  --ms-ink: #1b1b1a;
+  --ms-muted: #73736e;
+  --ms-line: #d8d8d3;
+  --ms-accent: #ef6c22;
+  --ms-success: #39815c;
+  --ms-mark-ink: #ffffff;
+  min-height: 100svh;
+  color: var(--ms-ink);
+  background: var(--ms-paper);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dark .ms-auth,
+.dark .ms-app-layout {
+  --ms-paper: #0d0d0d;
+  --ms-card: #121212;
+  --ms-panel-2: #161616;
+  --ms-ink: #eeeeec;
+  --ms-muted: #999995;
+  --ms-line: #282828;
+  --ms-accent: #ef6c22;
+  --ms-success: #4fa978;
+}
+
+.ms-auth button,
+.ms-app-layout button { cursor: pointer; }
+.ms-auth button:disabled,
+.ms-app-layout button:disabled { cursor: not-allowed; }
+.ms-auth button:focus-visible,
+.ms-auth input:focus-visible,
+.ms-header button:focus-visible {
+  outline: 2px solid var(--ms-accent);
+  outline-offset: 2px;
+}
+
+.ms-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ms-accent);
+  white-space: nowrap;
+}
+.ms-brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
+.ms-brand-name {
+  display: flex;
+  gap: 4px;
+  color: var(--ms-ink);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.35px;
+}
+.ms-brand-name > span { font-weight: 400; }
+
+.ms-icon-button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 5px;
+  color: var(--ms-muted);
+  background: transparent;
+}
+.ms-icon-button:hover { color: var(--ms-ink); background: var(--ms-panel-2); }
+.ms-icon-button svg { width: 15px; height: 15px; }
+
+.ms-header {
+  height: 48px;
+  border-bottom: 1px solid var(--ms-line);
+  background: var(--ms-card);
+}
+.ms-header-inner {
+  height: 100%;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.ms-header-left,
+.ms-header-right { display: flex; align-items: center; gap: 8px; }
+.ms-header-left { height: 100%; gap: 28px; }
+.ms-brand-link { text-align: left; border-radius: 4px; }
+.ms-header-nav {
+  align-self: stretch;
+  padding: 0 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--ms-muted);
+  font-size: 12px;
+}
+.ms-header-nav:hover { color: var(--ms-ink); }
+.ms-header-nav.is-active { color: var(--ms-ink); border-bottom-color: var(--ms-accent); }
+.ms-shell-content { width: 100%; padding: 0 22px 28px; }
+
+.ms-auth { display: flex; flex-direction: column; }
+.ms-auth-header {
+  height: 56px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--ms-line);
+  background: var(--ms-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ms-auth-main {
+  flex: 1;
+  width: min(420px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(72px, 12vh, 132px) 0 48px;
+}
+.ms-auth-entry { min-width: 0; }
+.ms-auth-panel { border-top: 2px solid var(--ms-ink); padding-top: 24px; }
+.ms-auth-panel h1 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -.55px;
+}
+.ms-auth-description {
+  margin-bottom: 28px;
+  color: var(--ms-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ms-auth-form { display: flex; flex-direction: column; gap: 18px; }
+.ms-auth-field { display: flex; flex-direction: column; gap: 7px; }
+.ms-auth-field > label { font-size: 11px; font-weight: 600; }
+.ms-auth-field input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--ms-line);
+  border-radius: 5px;
+  color: var(--ms-ink);
+  background: var(--ms-card);
+  font-size: 12px;
+}
+.ms-auth-field input::placeholder { color: var(--ms-muted); }
+.ms-auth-field input:focus { border-color: var(--ms-accent); }
+.ms-auth-field small { color: #b74c35; font-size: 10px; }
+.ms-password-field { position: relative; }
+.ms-password-field input { padding-right: 40px; }
+.ms-password-field > button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--ms-muted);
+}
+.ms-password-field > button:hover { color: var(--ms-ink); background: var(--ms-panel-2); }
+.ms-password-field > button svg { width: 15px; height: 15px; }
+.ms-auth-submit {
+  min-height: 42px;
+  margin-top: 2px;
+  padding: 10px 14px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffffff;
+  background: var(--ms-accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+.ms-auth-submit:hover:not(:disabled) { background: #d95c17; }
+.ms-auth-submit:disabled { opacity: .45; }
+.ms-auth-submit svg { width: 15px; height: 15px; }
+.ms-auth-error {
+  padding: 10px 0;
+  border-top: 1px solid #dc9e8f;
+  border-bottom: 1px solid #dc9e8f;
+  color: #a53f2b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.dark .ms-auth-error { color: #e9a18f; border-color: #704036; }
+.ms-password-rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 10px;
+  margin: -6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ms-password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ms-muted);
+  font-size: 9px;
+}
+.ms-password-rules li svg { width: 11px; height: 11px; opacity: .25; }
+.ms-password-rules li.is-met { color: var(--ms-success); }
+.ms-password-rules li.is-met svg { opacity: 1; }
+
+@media (max-width: 680px) {
+  .ms-header-inner,
+  .ms-auth-header { padding-left: 16px; padding-right: 16px; }
+  .ms-header-left { gap: 18px; }
+  .ms-shell-content { padding: 0 12px 20px; }
+  .ms-auth-main { padding-top: 64px; }
+  .ms-brand-name { font-size: 14px; }
+}
