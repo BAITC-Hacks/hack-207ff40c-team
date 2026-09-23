@@ -31,6 +31,11 @@ def diarize_audio(
     """
     Perform speaker diarization using NVIDIA's Sortformer model.
     """
+    # The bundled model has four fixed speaker outputs and no speaker-count
+    # constraint argument. Reject unsupported requests instead of ignoring them.
+    if isinstance(max_speakers, bool) or max_speakers != 4:
+        raise ValueError("This Sortformer model supports only max_speakers=4; use Pyannote for a constrained speaker count")
+
     if device is None or device == "auto":
         if torch.cuda.is_available():
             device = "cuda"
@@ -291,7 +296,7 @@ Note: This script requires diar_streaming_sortformer_4spk-v2.nemo to be in the s
     parser.add_argument("output_file", help="Path to output file (.json for JSON format, .rttm for RTTM format)")
     parser.add_argument("--batch-size", type=int, default=1, help="Batch size for processing (default: 1)")
     parser.add_argument("--device", choices=["cuda", "cpu", "auto"], default="auto", help="Device to use for inference (default: auto-detect)")
-    parser.add_argument("--max-speakers", type=int, default=4, help="Maximum number of speakers (default: 4, optimized for this model)")
+    parser.add_argument("--max-speakers", type=int, default=4, help="Fixed model capacity; only 4 is supported (use Pyannote for other limits)")
     parser.add_argument("--output-format", choices=["json", "rttm"], help="Output format (auto-detected from file extension if not specified)")
     parser.add_argument("--streaming", action="store_true", help="Enable streaming mode")
     parser.add_argument("--chunk-length-s", type=float, default=30.0, help="Chunk length in seconds for streaming mode (default: 30.0)")

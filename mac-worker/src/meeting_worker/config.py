@@ -1,5 +1,6 @@
 from pathlib import Path
 import ipaddress
+import math
 import ssl
 from urllib.parse import urlsplit, urlunsplit
 
@@ -79,8 +80,8 @@ class Settings(BaseSettings):
     @field_validator("max_upload_bytes", "upload_timeout", "audio_timeout", "max_audio_seconds", "ollama_timeout")
     @classmethod
     def positive(cls, value):
-        if value <= 0:
-            raise ValueError("Resource limits must be positive")
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError("Resource limits must be finite and positive")
         return value
 
     @property

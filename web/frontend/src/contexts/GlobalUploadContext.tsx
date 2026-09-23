@@ -69,7 +69,7 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
     } | null>(null);
 
     const handleFileSelect = useCallback(
-        async (files: File | File[] | FileWithType | FileWithType[]) => {
+        async (files: File | File[] | FileWithType | FileWithType[], rejectOnFailure = false) => {
             // Normalize input to an array of FileWithType objects
             const fileArray = Array.isArray(files) ? files : [files];
             const processedFiles = fileArray.map((item) => {
@@ -100,6 +100,7 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
             }
 
             let successCount = 0;
+            let firstFailure: unknown;
 
             // Upload files sequentially
             for (let i = 0; i < processedFiles.length; i++) {
@@ -121,6 +122,7 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
                     }
                     successCount++;
                 } catch (error) {
+                    firstFailure ??= error;
                     if (isOnDashboard) {
                         setUploadProgress((prev) =>
                             prev.map((item, index) =>
@@ -153,6 +155,10 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
                     title: "Upload Complete",
                     description: `Successfully uploaded ${successCount} file(s)`,
                 });
+            }
+
+            if (rejectOnFailure && successCount !== processedFiles.length) {
+                throw firstFailure instanceof Error ? firstFailure : new Error("Recording upload failed. Your recording is still available to retry or download.");
             }
 
             // Auto-hide progress after 3 seconds if all succeeded (for dashboard)
@@ -229,7 +235,7 @@ export function GlobalUploadProvider({ children }: PropsWithChildren) {
     const handleRecordingComplete = useCallback(
         async (blob: Blob, title: string) => {
             const file = new File([blob], `${title}.webm`, { type: blob.type });
-            await handleFileSelect(file);
+            await handleFileSelect(file, true);
         },
         [handleFileSelect]
     );

@@ -2,7 +2,11 @@ package transcription
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
+	"time"
 
 	"scriberr/internal/repository"
 	"scriberr/pkg/logger"
@@ -11,12 +15,18 @@ import (
 // UnifiedJobProcessor implements the existing JobProcessor interface using the new unified service
 type UnifiedJobProcessor struct {
 	unifiedService *UnifiedTranscriptionService
+	inferenceSlots chan struct{}
 }
 
 // NewUnifiedJobProcessor creates a new job processor using the unified service
 func NewUnifiedJobProcessor(jobRepo repository.JobRepository, tempDir, outputDir string) *UnifiedJobProcessor {
+	workers := 2
+	if n, err := strconv.Atoi(os.Getenv("QUEUE_WORKERS")); err == nil && n > 0 {
+		workers = n
+	}
 	return &UnifiedJobProcessor{
 		unifiedService: NewUnifiedTranscriptionService(jobRepo, tempDir, outputDir),
+		inferenceSlots: make(chan struct{}, workers),
 	}
 }
 
@@ -28,7 +38,7 @@ func (u *UnifiedJobProcessor) Initialize(ctx context.Context) error {
 // ProcessJob implements the legacy JobProcessor interface
 func (u *UnifiedJobProcessor) ProcessJob(ctx context.Context, jobID string) error {
 	logger.Info("Processing job with unified processor", "job_id", jobID)
-	return u.unifiedService.ProcessJob(ctx, jobID)
+	return u.processBounded(ctx, jobID)
 }
 
 // ProcessJobWithProcess implements the enhanced JobProcessor interface with process registration
@@ -42,6 +52,22 @@ func (u *UnifiedJobProcessor) ProcessJobWithProcess(ctx context.Context, jobID s
 	// Register a nil process for backward compatibility
 	registerProcess(nil)
 
+	return u.processBounded(ctx, jobID)
+}
+
+// The same admission budget covers ordinary and quick transcription paths.
+func (u *UnifiedJobProcessor) processBounded(ctx context.Context, jobID string) error {
+	if u.unifiedService == nil || u.inferenceSlots == nil {
+		return fmt.Errorf("inference admission is not configured")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Hour)
+	defer cancel()
+	select {
+	case u.inferenceSlots <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-u.inferenceSlots }()
 	return u.unifiedService.ProcessJob(ctx, jobID)
 }
 

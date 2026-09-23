@@ -40,6 +40,12 @@ func (g *gzipWriter) WriteString(s string) (int, error) {
 	return g.gw.Write([]byte(s))
 }
 
+// Flush must flush the compression buffer before the network writer.
+func (g *gzipWriter) Flush() {
+	_ = g.gw.Flush()
+	g.ResponseWriter.Flush()
+}
+
 // shouldCompress determines if response should be compressed
 func shouldCompress(c *gin.Context) bool {
 	// Check Accept-Encoding header
@@ -120,7 +126,7 @@ func CompressionMiddlewareWithLevel(level int) gin.HandlerFunc {
 		// Wrap response writer
 		c.Writer = &gzipWriter{
 			ResponseWriter: c.Writer,
-			gw:            gz,
+			gw:             gz,
 		}
 
 		c.Next()

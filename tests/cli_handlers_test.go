@@ -1,9 +1,11 @@
 package tests
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -133,27 +136,34 @@ func (suite *CLIHandlerTestSuite) TestAuthorizeCLI() {
 
 func (suite *CLIHandlerTestSuite) TestConfirmCLIAuthorization() {
 	// Test POST /api/v1/auth/cli/authorize
+	state := base64.RawURLEncoding.EncodeToString([]byte(strings.Repeat("s", 32)))
 	body := map[string]string{
-		"callback_url": "http://localhost:12345",
+		"callback_url": "http://127.0.0.1:12345/callback",
 		"device_name":  "Test Device",
+		"state":        state,
 	}
 
 	w := suite.makeAuthenticatedRequest("POST", "/api/v1/auth/cli/authorize", body)
-	assert.Equal(suite.T(), 200, w.Code)
+	require.Equal(suite.T(), 200, w.Code, w.Body.String())
 
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(suite.T(), err)
+	require.NoError(suite.T(), err)
 
 	redirectURL := response["redirect_url"].(string)
-	assert.Contains(suite.T(), redirectURL, "http://localhost:12345")
-	assert.Contains(suite.T(), redirectURL, "token=")
-	assert.Contains(suite.T(), redirectURL, "username="+suite.helper.TestUser.Username)
+	callback, err := url.Parse(redirectURL)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "http", callback.Scheme)
+	assert.Equal(suite.T(), "127.0.0.1:12345", callback.Host)
+	assert.Equal(suite.T(), "/callback", callback.Path)
+	assert.Equal(suite.T(), state, callback.Query().Get("state"))
+	assert.NotEmpty(suite.T(), callback.Query().Get("token"))
+	assert.Equal(suite.T(), suite.helper.TestUser.Username, callback.Query().Get("username"))
 }
 
 func (suite *CLIHandlerTestSuite) TestGetInstallScript() {
 	// Test GET /api/v1/cli/install
-	req, _ := http.NewRequest("GET", "/api/v1/cli/install", nil)
+	req := httptest.NewRequest("GET", "http://127.0.0.1:8080/api/v1/cli/install", nil)
 	w := httptest.NewRecorder()
 	suite.router.ServeHTTP(w, req)
 
@@ -162,7 +172,8 @@ func (suite *CLIHandlerTestSuite) TestGetInstallScript() {
 
 	body := w.Body.String()
 	assert.Contains(suite.T(), body, "#!/bin/bash")
-	assert.Contains(suite.T(), body, "curl -sL")
+	assert.Contains(suite.T(), body, "curl --fail --show-error --silent --location --max-time 120")
+	assert.Contains(suite.T(), body, "--token-stdin")
 }
 
 func (suite *CLIHandlerTestSuite) TestDownloadCLIBinary() {

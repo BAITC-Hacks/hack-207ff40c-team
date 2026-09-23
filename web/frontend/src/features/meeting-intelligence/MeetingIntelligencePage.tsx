@@ -43,7 +43,8 @@ export function MeetingIntelligencePage() {
   const [connectionError, setConnectionError] = useState('')
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [limit, setLimit] = useState(50)
+  const [archiveOffset, setArchiveOffset] = useState(0)
+  const archivePageSize = 50
   const [refreshKey, setRefreshKey] = useState(0)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [recordOpen, setRecordOpen] = useState(false)
@@ -74,7 +75,7 @@ export function MeetingIntelligencePage() {
       if (pending || document.hidden) return
       pending = true
       try {
-        const results = await Promise.allSettled([capabilities(config), listJobs(config, limit)])
+        const results = await Promise.allSettled([capabilities(config), listJobs(config, archivePageSize, archiveOffset)])
         if (disposed) return
         const rejected = results.find(result => result.status === 'rejected')
         if (rejected?.status === 'rejected') throw rejected.reason
@@ -105,10 +106,11 @@ export function MeetingIntelligencePage() {
     const onVisible = () => { if (!document.hidden) void poll() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { disposed = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
-  }, [token, config, limit, refreshKey])
+  }, [token, config, archiveOffset, refreshKey])
 
   const acceptJob = useCallback((job: JobRecord) => {
     setJobs(previous => [job, ...previous.filter(item => item.id !== job.id)])
+    setArchiveOffset(0)
     choose(job.id)
     refresh()
   }, [choose, refresh])
@@ -118,7 +120,7 @@ export function MeetingIntelligencePage() {
     try { acceptJob(await action()) } catch (cause) { setError(message(cause)) } finally { setActionBusy(false) }
   }
   function disconnect() {
-    saveSession(tokenKey, ''); setToken(''); setConnected(false); setJobs([]); setCaps(undefined); choose(''); setPairOpen(false)
+    saveSession(tokenKey, ''); setToken(''); setConnected(false); setJobs([]); setCaps(undefined); choose(''); setArchiveOffset(0); setPairOpen(false)
   }
   const visible = jobs.filter(job => title(job).toLocaleLowerCase().includes(search.toLocaleLowerCase()))
 
@@ -148,11 +150,11 @@ export function MeetingIntelligencePage() {
     <div className="mi-workspace">
       <aside className="mi-archive" aria-label="Meeting archive">
         <div className="mi-archive-heading"><h2>All meetings <span>{jobs.length}</span></h2><button className="mi-icon-button" aria-label="Refresh archive" title="Refresh archive" onClick={refresh} disabled={!token}><RefreshCw /></button></div>
-        <label className="mi-search"><Search /><input type="search" placeholder="Find a meeting…" aria-label="Find a meeting by title" value={search} onChange={event => setSearch(event.target.value)} /></label>
+        <label className="mi-search"><Search /><input type="search" placeholder="Find on this page…" aria-label="Find a meeting by title on this page" value={search} onChange={event => setSearch(event.target.value)} /></label>
         <div className="mi-meeting-list">{visible.map(job => <button key={job.id} className={`mi-meeting ${job.id === selected ? 'is-selected' : ''}`} aria-pressed={job.id === selected} onClick={() => choose(job.id)}><span className="mi-meeting-copy"><strong>{title(job)}</strong><span>{date(job.created_at)}<span className="mi-list-divider">·</span>{job.source_kind === 'text' ? 'Transcript' : 'Recording'}</span><Badge stage={job.stage} /></span></button>)}
-          {!visible.length && <div className="mi-list-empty"><strong>{search ? 'No matching meetings' : 'No meetings yet'}</strong><p>{search ? 'Try another title.' : token && !connected ? 'Connecting to the station…' : 'Import a recording or start a recording.'}</p></div>}
+          {!visible.length && <div className="mi-list-empty"><strong>{search ? 'No matching meetings' : 'No meetings yet'}</strong><p>{search ? 'Try another title or load older meetings.' : token && !connected ? 'Connecting to the station…' : 'Import a recording or start a recording.'}</p></div>}
         </div>
-        {jobs.length >= limit && limit < 200 && <button className="mi-load-more" onClick={() => setLimit(value => Math.min(200, value + 50))}>Load older meetings</button>}
+        <div aria-label="Archive pages">{archiveOffset > 0 && <button className="mi-load-more" onClick={() => { setArchiveOffset(value => Math.max(0, value - archivePageSize)); setSearch('') }}>Load newer meetings</button>}<p className="mi-list-empty">Page {archiveOffset / archivePageSize + 1} · Search applies to this page.</p>{jobs.length === archivePageSize && <button className="mi-load-more" onClick={() => { setArchiveOffset(value => value + archivePageSize); setSearch('') }}>Load older meetings</button>}</div>
       </aside>
       <section className="mi-detail" aria-label="Meeting details">
         {selectedJob ? <MeetingDetail key={selectedJob.id} job={selectedJob} config={config} connected={connected} onError={setError} onRetry={() => void perform(() => retryJob(config, selectedJob.id))} onCancel={() => void perform(() => cancelJob(config, selectedJob.id))} busy={actionBusy} /> : <div className="mi-welcome"><h2>No meeting selected</h2><p>Select a meeting from the archive or import a recording.</p></div>}

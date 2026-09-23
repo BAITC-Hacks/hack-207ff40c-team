@@ -3,6 +3,8 @@ import json
 import math
 import os
 import subprocess
+import signal
+import time
 import sys
 import wave
 from pathlib import Path
@@ -23,16 +25,64 @@ class AudioError(Exception):
     pass
 
 
-def command(arguments, directory, timeout):
+class ProcessingCancelled(AudioError):
+    pass
+
+
+_stage_process_group = None
+
+
+def inherit_stage_process_group():
+    """Keep nested tools in the disposable model stage's cancellation group."""
+    global _stage_process_group
+    if os.name == 'posix':
+        if os.getpgrp() != os.getpid():
+            raise RuntimeError('Model stage must own its process group')
+        _stage_process_group = os.getpgrp()
+
+
+def command(arguments, directory, timeout, cancelled=None):
     # Arguments are never passed through a shell. Logs stay in the temporary job.
     with (directory / "process.log").open("ab") as log:
+        process = None
         try:
-            subprocess.run(arguments, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
-                           timeout=timeout, check=True, env=dict(os.environ, HF_HUB_OFFLINE="1"))
+            if cancelled and cancelled():
+                raise ProcessingCancelled('Processing was cancelled; source remains archived')
+            owns_group = os.name == 'posix' and _stage_process_group is None
+            process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                start_new_session=owns_group, env=dict(os.environ, HF_HUB_OFFLINE="1",
+                    TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", PYANNOTE_METRICS_ENABLED="0"))
+            deadline = time.monotonic() + timeout
+            while True:
+                if cancelled and cancelled():
+                    raise ProcessingCancelled('Processing was cancelled; source remains archived')
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(arguments, timeout)
+                try:
+                    code = process.wait(timeout=min(0.1, remaining))
+                    if code:
+                        raise subprocess.CalledProcessError(code, arguments)
+                    break
+                except subprocess.TimeoutExpired:
+                    if time.monotonic() >= deadline:
+                        raise
         except subprocess.TimeoutExpired as exc:
             raise AudioError("Local audio processing timed out; the station recording is preserved") from exc
         except (subprocess.CalledProcessError, OSError) as exc:
             raise AudioError("Local audio tool failed; verify its executable and model configuration") from exc
+        finally:
+            if process is not None:
+                try:
+                    # A crashed model launcher may leave its own child workers
+                    # alive even after the direct child has already exited.
+                    if owns_group:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    elif process.poll() is None:
+                        process.kill()
+                except ProcessLookupError:
+                    pass
+                process.wait()
 
 
 def speaker_for(start, end, turns):

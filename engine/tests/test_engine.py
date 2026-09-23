@@ -166,3 +166,30 @@ def test_pdf_unicode_and_markup(tmp_path):
     document = render_pdf({"title": "Қазақша Русский <img src='https://invalid/evil'>", "segments": [], "report": EMPTY}, font)
     assert document.startswith(b"%PDF")
     assert len(document) > 1000
+
+
+def test_verification_includes_uncited_later_correction():
+    seen = []
+    def handler(request):
+        payload = json.loads(request.content)
+        context = json.loads(payload["messages"][1]["content"])
+        seen.append(context)
+        corrected = any("Timur" in item["text"] for item in context["discussion"])
+        return httpx.Response(200, json={"done": True, "message": {"content": json.dumps({"verdicts": [{"id": 0, "supported": not corrected}]})}})
+
+    async def run():
+        reasoner = VerifiedReasoner(EngineSettings(token=TOKEN).reasoner_settings(), transport=httpx.MockTransport(handler))
+        report = Report.model_validate(dict(EMPTY, action_items=[{"task": "Send report", "owner": "Dana", "due": "Monday", "evidence": [1]}]))
+        meeting = {"segments": [{"sequence": 1, "start": 0, "end": 1, "speaker": "unknown", "text": "Dana will send the report Monday."},
+                                {"sequence": 2, "start": 2, "end": 3, "speaker": "unknown", "text": "Correction: Timur will send it Tuesday instead."}]}
+        try:
+            with pytest.raises(InferenceError, match="unsupported"):
+                await reasoner.verify(report, meeting, 2)
+            assert [item["sequence"] for item in seen[0]["discussion"]] == [1, 2]
+            reasoner.message_budget = 100
+            with pytest.raises(InferenceError, match="chronological discussion"):
+                await reasoner.verify(report, meeting, 2)
+            assert len(seen) == 1  # Full context cannot fit: no truncated model request.
+        finally:
+            await reasoner.close()
+    asyncio.run(run())

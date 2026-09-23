@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Meeting Station — совещание в протокол, данные в вашем контуре</title>
+  <desc id="desc">Meeting Station, проект MEET-BOX. Локальные модели для русской, казахской и смешанной речи, проверка человеком и экспорт. Документ и звуковая волна — иллюстрации, а не снимки интерфейса.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse"><stop stop-color="#10223C"/><stop offset="1" stop-color="#183E52"/></linearGradient>
+    <linearGradient id="sheet" x1="830" y1="62" x2="1060" y2="360" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF2F3"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#FFF" stroke-opacity=".035"/></pattern>
+  </defs>
+  <rect width="1200" height="420" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="420" rx="20" fill="url(#grid)"/>
+  <path d="M680 420C710 230 942 450 1200 120" stroke="#5DADAB" stroke-opacity=".16" stroke-width="90"/>
+  <circle cx="1086" cy="80" r="134" stroke="#D4B781" stroke-opacity=".12"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif">
+    <rect x="54" y="46" width="10" height="10" rx="3" fill="#73D2C1"/>
+    <text x="76" y="57" fill="#B6C9D5" font-size="14" font-weight="600" letter-spacing="1.5">MEET-BOX / ПРОТОКОЛЫ В ЛОКАЛЬНОМ КОНТУРЕ</text>
+    <text x="52" y="137" fill="#FFF" font-size="62" font-weight="700" letter-spacing="-2">Meeting Station</text>
+    <text x="54" y="210" fill="#ECF1F2" font-size="36" font-weight="400" letter-spacing="-.5">Совещание — в протокол.</text>
+    <text x="54" y="259" fill="#DEC795" font-size="36" font-weight="400" letter-spacing="-.5">Данные — в вашем контуре.</text>
+    <g font-size="12" font-weight="600" letter-spacing=".4">
+      <rect x="54" y="319" width="165" height="37" rx="18.5" fill="#FFFFFF" fill-opacity=".07" stroke="#FFFFFF" stroke-opacity=".18"/>
+      <text x="136" y="343" fill="#E6EDF2" text-anchor="middle">РУС / ҚАЗ / СМЕШАННАЯ</text>
+      <rect x="230" y="319" width="146" height="37" rx="18.5" fill="#FFFFFF" fill-opacity=".07" stroke="#FFFFFF" stroke-opacity=".18"/>
+      <text x="303" y="343" fill="#E6EDF2" text-anchor="middle">ЛОКАЛЬНЫЙ ИИ</text>
+      <rect x="387" y="319" width="178" height="37" rx="18.5" fill="#FFFFFF" fill-opacity=".07" stroke="#FFFFFF" stroke-opacity=".18"/>
+      <text x="476" y="343" fill="#E6EDF2" text-anchor="middle">ПРОВЕРКА + ЭКСПОРТ</text>
+    </g>
+    <rect x="860" y="74" width="240" height="272" rx="18" fill="#071C30" fill-opacity=".3" transform="rotate(7 860 74)"/>
+    <rect x="839" y="65" width="240" height="280" rx="18" fill="url(#sheet)"/>
+    <rect x="864" y="89" width="41" height="5" rx="2.5" fill="#A58B60"/>
+    <text x="864" y="126" font-size="20" font-weight="700" fill="#142A43">Протокол встречи</text>
+    <path d="M864 146H1051" stroke="#D5DFE3"/>
+    <g stroke="#AEC1C9" stroke-width="5" stroke-linecap="round"><path d="M864 170H1026M864 185H1000"/></g>
+    <rect x="861" y="208" width="195" height="66" rx="9" fill="#DEEEE9"/>
+    <circle cx="881" cy="230" r="8" fill="#267B68"/>
+    <path d="m877 230 3 3 5-6" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="898" y="234" font-size="15" font-weight="600" fill="#1C5047">Кто · Что · Когда</text>
+    <text x="874" y="256" font-size="13" fill="#476C65">Со ссылкой на реплику</text>
+    <text x="881" y="309" font-size="14" font-weight="600" fill="#486071">Проверено человеком</text>
+    <rect x="707" y="148" width="104" height="126" rx="18" fill="#22495B" stroke="#6CA29E" stroke-opacity=".5"/>
+    <g stroke="#86D8CA" stroke-width="4" stroke-linecap="round"><path d="M729 202V220M741 185V237M753 196V226M765 176V246M777 193V229M789 201V221"/></g>
+    <path d="M804 295c18 0 32-8 32-8s14 8 32 8v27c0 23-32 38-32 38s-32-15-32-38Z" fill="#D8BE8B" stroke="#183C4E" stroke-width="5"/>
+    <rect x="826" y="317" width="20" height="17" rx="3" fill="#183C4E"/>
+    <path d="M830 317v-5a6 6 0 0 1 12 0v5" stroke="#183C4E" stroke-width="3"/>
+  </g>
+</svg>

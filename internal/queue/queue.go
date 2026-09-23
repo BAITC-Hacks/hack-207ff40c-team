@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -38,6 +39,7 @@ type TaskQueue struct {
 	autoScale      bool
 	lastScaleTime  time.Time
 	jobRepo        repository.JobRepository
+	admissionMutex sync.Mutex
 }
 
 // JobProcessor defines the interface for processing jobs
@@ -124,15 +126,16 @@ func (tq *TaskQueue) Start() {
 	// Reset any zombie jobs from previous runs synchronously before starting workers
 	tq.ResetZombieJobs()
 
-	// One-time recovery: enqueue any pending jobs left from previous server run
-	// This is NOT a polling mechanism - it only runs once at startup
-	tq.recoverPendingJobs()
-
 	// Start initial workers
 	for i := 0; i < workers; i++ {
 		tq.wg.Add(1)
 		go tq.worker(i)
 	}
+
+	// Recovery is a bounded producer alongside consumers, so backlogs larger
+	// than the channel remain recoverable instead of being silently dropped.
+	tq.wg.Add(1)
+	go func() { defer tq.wg.Done(); tq.recoverPendingJobs() }()
 
 	// Start auto-scaling monitor if enabled
 	if tq.autoScale {
@@ -154,21 +157,49 @@ func (tq *TaskQueue) Stop() {
 
 // EnqueueJob adds a job to the queue
 func (tq *TaskQueue) EnqueueJob(jobID string) error {
-	// Check if queue is already shut down
-	select {
-	case <-tq.ctx.Done():
-		return fmt.Errorf("queue is shutting down")
-	default:
-	}
+	return tq.EnqueuePreparedJob(jobID, nil)
+}
 
-	select {
-	case tq.jobChannel <- jobID:
-		return nil
-	case <-tq.ctx.Done():
+// EnqueuePreparedJob reserves local channel capacity before committing a durable
+// database transition. All producers use admissionMutex, so a full queue never
+// changes the previous result or leaves a newly stranded pending job.
+func (tq *TaskQueue) EnqueuePreparedJob(jobID string, prepare func() error) error {
+	tq.admissionMutex.Lock()
+	defer tq.admissionMutex.Unlock()
+	if tq.ctx.Err() != nil {
 		return fmt.Errorf("queue is shutting down")
-	default:
+	}
+	if len(tq.jobChannel) == cap(tq.jobChannel) {
 		return fmt.Errorf("queue is full")
 	}
+	// Keep admission and ownership checks atomic with worker claim/finalization.
+	// A canceled processor may still be closing files or waiting for its child.
+	tq.jobsMutex.RLock()
+	defer tq.jobsMutex.RUnlock()
+	if _, running := tq.runningJobs[jobID]; running {
+		return repository.ErrJobConflict
+	}
+	if prepare != nil {
+		if err := prepare(); err != nil {
+			return err
+		}
+	}
+	// Capacity is reserved. Even when shutdown races this send, the durable
+	// pending row is retained for startup recovery.
+	tq.jobChannel <- jobID
+	return nil
+}
+
+// BeginJobDeletion records durable deletion intent only when no processor owns
+// the job. The same lock covers claim and admission, so neither can start between
+// the ownership check and the database transition that makes future claims fail.
+func (tq *TaskQueue) BeginJobDeletion(jobID string, begin func() error) error {
+	tq.jobsMutex.Lock()
+	defer tq.jobsMutex.Unlock()
+	if _, running := tq.runningJobs[jobID]; running {
+		return repository.ErrJobConflict
+	}
+	return begin()
 }
 
 // worker processes jobs from the channel
@@ -187,27 +218,38 @@ func (tq *TaskQueue) worker(id int) {
 
 			logger.WorkerOperation(id, jobID, "start")
 
-			// Update job status to processing
-			if err := tq.updateJobStatus(jobID, models.StatusProcessing); err != nil {
-				logger.Error("Failed to update job status", "worker_id", id, "job_id", jobID, "error", err)
+			// A DB claim and its in-memory ownership are one transition to
+			// KillJob, which must not mistake the claim window for a zombie.
+			tq.jobsMutex.Lock()
+			if _, running := tq.runningJobs[jobID]; running {
+				tq.jobsMutex.Unlock()
+				continue
+			}
+			if claimer, ok := tq.jobRepo.(interface {
+				Claim(context.Context, string) (bool, error)
+			}); ok {
+				claimed, err := claimer.Claim(tq.ctx, jobID)
+				if err != nil || !claimed {
+					tq.jobsMutex.Unlock()
+					continue
+				}
+			} else if err := tq.updateJobStatus(jobID, models.StatusProcessing); err != nil {
+				tq.jobsMutex.Unlock()
 				continue
 			}
 
-			// Create context for this job and track it
 			jobCtx, jobCancel := context.WithCancel(tq.ctx)
 			runningJob := &RunningJob{
 				Cancel:  jobCancel,
 				Process: nil, // Will be set by registerProcess callback
 			}
-
-			tq.jobsMutex.Lock()
 			tq.runningJobs[jobID] = runningJob
 			tq.jobsMutex.Unlock()
 
 			// Register process callback
 			registerProcess := func(cmd *exec.Cmd) {
 				tq.jobsMutex.Lock()
-				if job, exists := tq.runningJobs[jobID]; exists {
+				if job := tq.runningJobs[jobID]; job == runningJob {
 					job.Process = cmd
 				}
 				tq.jobsMutex.Unlock()
@@ -216,12 +258,12 @@ func (tq *TaskQueue) worker(id int) {
 			// Process the job with process registration
 			err := tq.processor.ProcessJobWithProcess(jobCtx, jobID, registerProcess)
 
-			// Remove job from running jobs
+			// Keep ownership until all final writes finish. Neither a retry nor
+			// zombie cancellation may race these writes into a new execution.
 			tq.jobsMutex.Lock()
-			delete(tq.runningJobs, jobID)
-			tq.jobsMutex.Unlock()
-
-			// Handle result
+			if err == nil && jobCtx.Err() != nil {
+				err = jobCtx.Err()
+			}
 			if err != nil {
 				if jobCtx.Err() == context.Canceled {
 					logger.Info("Job cancelled", "worker_id", id, "job_id", jobID)
@@ -247,6 +289,10 @@ func (tq *TaskQueue) worker(id int) {
 				}
 			}
 
+			delete(tq.runningJobs, jobID)
+			jobCancel() // release the parent context's completed child
+			tq.jobsMutex.Unlock()
+
 		case <-tq.ctx.Done():
 			logger.Debug("Worker stopped", "worker_id", id, "reason", "context_cancelled")
 			return
@@ -261,40 +307,17 @@ func (tq *TaskQueue) KillJob(jobID string) error {
 
 	runningJob, exists := tq.runningJobs[jobID]
 	if !exists {
-		// If job is not in memory but exists in DB as processing, it's a zombie
-		// We should still mark it as failed in DB
-		logger.Warn("Job not found in running jobs map, checking DB status", "job_id", jobID)
-
-		job, err := tq.jobRepo.FindByID(context.Background(), jobID)
-		if err != nil {
-			return fmt.Errorf("job %s not found: %v", jobID, err)
-		}
-
-		if job.Status == models.StatusProcessing {
-			logger.Info("Found zombie job in DB, marking as failed", "job_id", jobID)
-			if err := tq.updateJobStatus(jobID, models.StatusFailed); err != nil {
-				logger.Error("Failed to update zombie job status", "job_id", jobID, "error", err)
-			}
-			if err := tq.updateJobError(jobID, "Job was forcefully terminated by user (zombie process)"); err != nil {
-				logger.Error("Failed to update zombie job error", "job_id", jobID, "error", err)
-			}
-			return nil
-		}
-
-		return fmt.Errorf("job %s is not currently running", jobID)
+		// A processing row may belong to direct/quick inference or another
+		// queue. Only startup recovery may classify an interrupted execution;
+		// cancellation must not publish failed for a processor it cannot stop.
+		return fmt.Errorf("job %s is not currently running in this queue", jobID)
 	}
 
 	logger.Info("Killing job", "job_id", jobID)
 
-	// Check if this is a multi-track job and handle accordingly
-	if mtProcessor, ok := tq.processor.(MultiTrackJobProcessor); ok && mtProcessor.IsMultiTrackJob(jobID) {
-		logger.Debug("Terminating multi-track job", "job_id", jobID)
-
-		// Terminate all individual track jobs
-		if err := mtProcessor.TerminateMultiTrackJob(jobID); err != nil {
-			logger.Error("Failed to terminate multi-track job", "job_id", jobID, "error", err)
-		}
-	}
+	// Cancellation propagates to individual tracks through the parent context.
+	// Let their processor clean up after exit; eager multi-track termination
+	// deletes live child records and exposes failed while inference still runs.
 
 	// First, try to kill the OS process group (or process on non-Unix)
 	if runningJob.Process != nil && runningJob.Process.Process != nil {
@@ -308,11 +331,8 @@ func (tq *TaskQueue) KillJob(jobID string) error {
 	// Also cancel the context for cleanup
 	runningJob.Cancel()
 
-	// Immediately update job status without waiting for process to finish
-	go func() {
-		_ = tq.updateJobStatus(jobID, models.StatusFailed)
-		_ = tq.updateJobError(jobID, "Job was forcefully terminated by user")
-	}()
+	// The worker records failed only after the processor exits. Exposing a
+	// retryable state here would let a second execution race its cleanup.
 
 	return nil
 }
@@ -473,11 +493,16 @@ func (tq *TaskQueue) recoverPendingJobs() {
 	logger.Info("Recovering pending jobs from previous server run", "count", len(pendingJobs))
 
 	for _, job := range pendingJobs {
-		select {
-		case tq.jobChannel <- job.ID:
-			logger.Debug("Recovered pending job", "job_id", job.ID)
-		default:
-			logger.Warn("Queue full during startup recovery, job will remain pending", "job_id", job.ID)
+		for {
+			if err := tq.EnqueueJob(job.ID); err == nil || errors.Is(err, repository.ErrJobConflict) {
+				// A job claimed after the recovery snapshot is already owned.
+				break
+			}
+			select {
+			case <-tq.ctx.Done():
+				return
+			case <-time.After(10 * time.Millisecond):
+			}
 		}
 	}
 }

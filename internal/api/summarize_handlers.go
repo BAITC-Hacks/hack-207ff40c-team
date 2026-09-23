@@ -77,23 +77,21 @@ func (h *Handler) processSummarization(c *gin.Context, req SummarizeRequest, svc
 	finalText := ""
 	gotFirstChunk := false
 
-	// Loop handles one chunk/error at a time
-	for {
+	// Both streams must finish: a closed error channel is not a successful completion.
+	for contentChan != nil || errChan != nil {
 		select {
 		case chunk, ok := <-contentChan:
 			if !ok {
-				writer.Flush()
-				if flusher != nil {
-					flusher.Flush()
-				}
-				// Persist summary once streaming completes
-				h.persistSummary(req, finalText)
-				log.Printf("[summarize] complete transcription_id=%s model=%s bytes=%d duration_ms=%d", req.TranscriptionID, req.Model, len(finalText), time.Since(start).Milliseconds())
-				return
+				contentChan = nil
+				continue
 			}
 			finalText += chunk
-			_, _ = writer.WriteString(chunk)
-			writer.Flush()
+			if _, err := writer.WriteString(chunk); err != nil {
+				return
+			}
+			if err := writer.Flush(); err != nil {
+				return
+			}
 			if flusher != nil {
 				flusher.Flush()
 			}
@@ -101,20 +99,22 @@ func (h *Handler) processSummarization(c *gin.Context, req SummarizeRequest, svc
 				gotFirstChunk = true
 				log.Printf("[summarize] first_chunk transcription_id=%s model=%s at_ms=%d", req.TranscriptionID, req.Model, time.Since(start).Milliseconds())
 			}
-		case err := <-errChan:
+		case err, ok := <-errChan:
+			if !ok {
+				errChan = nil
+				continue
+			}
 			if err != nil {
 				h.handleSummarizeError(c, req, svc, messages, err, finalText, start)
+				return
 			}
-			// Persist any partial content on error
-			h.persistSummary(req, finalText)
-			return
 		case <-ctx.Done():
-			// Persist any partial content on timeout/cancel
-			h.persistSummary(req, finalText)
-			log.Printf("[summarize] timeout/cancel transcription_id=%s model=%s bytes=%d duration_ms=%d", req.TranscriptionID, req.Model, len(finalText), time.Since(start).Milliseconds())
+			log.Printf("[summarize] timeout/cancel transcription_id=%s", req.TranscriptionID)
 			return
 		}
 	}
+	h.persistSummary(req, finalText)
+
 }
 
 func (h *Handler) handleSummarizeError(c *gin.Context, req SummarizeRequest, svc llm.Service, messages []llm.ChatMessage, err error, partialText string, start time.Time) {
@@ -124,7 +124,7 @@ func (h *Handler) handleSummarizeError(c *gin.Context, req SummarizeRequest, svc
 	// Best-effort error signal
 	// If streaming is unsupported for this model/org, fall back to non-streaming
 	errStr := err.Error()
-	if strings.Contains(errStr, "\"param\": \"stream\"") || strings.Contains(errStr, "unsupported_value") || strings.Contains(errStr, "must be verified to stream") {
+	if partialText == "" && (strings.Contains(errStr, "\"param\": \"stream\"") || strings.Contains(errStr, "unsupported_value") || strings.Contains(errStr, "must be verified to stream")) {
 		log.Printf("[summarize] falling back to non-streaming transcription_id=%s model=%s due to: %v", req.TranscriptionID, req.Model, err)
 		resp, err2 := svc.ChatCompletion(c.Request.Context(), req.Model, messages, 0.0)
 		if err2 != nil || resp == nil || len(resp.Choices) == 0 {
@@ -137,24 +137,15 @@ func (h *Handler) handleSummarizeError(c *gin.Context, req SummarizeRequest, svc
 			return
 		}
 		content := resp.Choices[0].Message.Content
-		// Write content (appended to partial if any, though likely partial is empty if stream failed immediately)
+		// Only a complete, successful fallback becomes a saved summary.
 		_, _ = writer.WriteString(content)
 		writer.Flush()
 		if flusher != nil {
 			flusher.Flush()
 		}
-		// We should persist the FULL text (partial + fallback), but partialText is passed by value.
-		// However, handleSumarizeError doesn't update partialText in caller.
-		// The caller calls persistSummary(req, finalText) after this function returns.
-		// So we actually need to persist here if we succeed?
-		// Or return the new text?
-		// Since we can't easily update finalText in caller without pointer, let's persist here if success.
-		h.persistSummary(req, partialText+content)
-		log.Printf("[summarize] fallback complete transcription_id=%s model=%s bytes=%d duration_ms=%d", req.TranscriptionID, req.Model, len(partialText+content), time.Since(start).Milliseconds())
+		h.persistSummary(req, content)
+		log.Printf("[summarize] fallback complete transcription_id=%s model=%s bytes=%d duration_ms=%d", req.TranscriptionID, req.Model, len(content), time.Since(start).Milliseconds())
 
-		// To avoid double persistence in caller (which uses stale finalText), we need a way to signal "done".
-		// But caller persists anyway.
-		// It's acceptable to double-persist (idempotent updates usually) or just accept that caller persists partial and we persist full.
 		return
 	}
 	_, _ = c.Writer.Write([]byte("\n"))

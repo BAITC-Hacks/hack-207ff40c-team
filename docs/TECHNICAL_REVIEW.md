@@ -1,9 +1,13 @@
 # Production engineering review — 23 September 2026
 
-The repository is not ready for a production-readiness claim. The findings below
-are open defects, not fixes made by this review. They include inherited code
+**Historical review.** The subsequent implementation and regression evidence for
+all 72 findings are tracked in [FOUNDATION_FIXES.md](FOUNDATION_FIXES.md).
+Paths and line numbers below describe the reviewed version, not the repaired tree.
+
+The findings below were defects identified by this review, not fixes made by it. They include inherited code
 because the requested scope was the entire relevant implementation, not a diff.
-Passing the current checks does not cover these failure paths.
+The checks available at that time did not cover these failure paths. Passing the
+expanded checks still does not establish production readiness or model accuracy.
 
 Reviewed working tree: root commit `e40f2733d18f989a1e24023172214bb1046c2562`
 plus the interface branding changes recorded in HANDOFF. Paths and line numbers

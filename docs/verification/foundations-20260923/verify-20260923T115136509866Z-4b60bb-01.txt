@@ -1,0 +1,42 @@
+STDOUT
+
+STDERR
+test_adapter_timeout (test_evaluate.EvaluatorTests.test_adapter_timeout) ... ok
+test_baseline_crash_not_hidden (test_evaluate.EvaluatorTests.test_baseline_crash_not_hidden) ... ok
+test_booleans_not_numbers (test_evaluate.EvaluatorTests.test_booleans_not_numbers) ... ok
+test_duplicate_case_ids_rejected (test_evaluate.EvaluatorTests.test_duplicate_case_ids_rejected) ... ok
+test_empty_case_file_rejected (test_evaluate.EvaluatorTests.test_empty_case_file_rejected) ... ok
+test_expectations_required (test_evaluate.EvaluatorTests.test_expectations_required) ... ok
+test_missing_executable (test_evaluate.EvaluatorTests.test_missing_executable) ... ok
+test_missing_path_fails (test_evaluate.EvaluatorTests.test_missing_path_fails) ... ok
+test_nan_rejected (test_evaluate.EvaluatorTests.test_nan_rejected) ... ok
+test_no_path_escape (test_evaluate.EvaluatorTests.test_no_path_escape) ... ok
+test_non_json_adapter_rejected (test_evaluate.EvaluatorTests.test_non_json_adapter_rejected) ... ok
+test_path_lookup (test_evaluate.EvaluatorTests.test_path_lookup) ... ok
+test_prepare_mode_rejected (test_evaluate.EvaluatorTests.test_prepare_mode_rejected) ... ok
+test_proposed_failure_recorded (test_evaluate.EvaluatorTests.test_proposed_failure_recorded) ... ok
+test_real_paired_execution (test_evaluate.EvaluatorTests.test_real_paired_execution) ... ok
+test_type_sensitive_numbers (test_evaluate.EvaluatorTests.test_type_sensitive_numbers) ... ok
+test_activation_records_snapshot (test_harness.HarnessTests.test_activation_records_snapshot) ... ok
+test_confirmation_required (test_harness.HarnessTests.test_confirmation_required) ... ok
+test_duplicate_command_names_rejected (test_harness.HarnessTests.test_duplicate_command_names_rejected) ... ok
+test_failed_command_not_passing (test_harness.HarnessTests.test_failed_command_not_passing) ... ok
+test_invalid_skill_detected (test_harness.HarnessTests.test_invalid_skill_detected) ... ok
+test_missing_file_detected (test_harness.HarnessTests.test_missing_file_detected) ... ok
+test_missing_skill_detected (test_harness.HarnessTests.test_missing_skill_detected) ... ok
+test_prepare_not_authorized (test_harness.HarnessTests.test_prepare_not_authorized) ... ok
+test_real_brief_required (test_harness.HarnessTests.test_real_brief_required) ... ok
+test_real_commands_pass (test_harness.HarnessTests.test_real_commands_pass) ... ok
+test_shell_string_rejected (test_harness.HarnessTests.test_shell_string_rejected) ... ok
+test_snapshot_excludes_private_and_generated (test_harness.HarnessTests.test_snapshot_excludes_private_and_generated) ... ok
+test_snapshot_includes_model_source_but_not_weights (test_harness.HarnessTests.test_snapshot_includes_model_source_but_not_weights) ... ok
+test_structure (test_harness.HarnessTests.test_structure) ... ok
+test_timeout_validation (test_harness.HarnessTests.test_timeout_validation) ... ok
+test_verification_refuses_empty (test_harness.HarnessTests.test_verification_refuses_empty) ... ok
+test_verification_refuses_missing_kind (test_harness.HarnessTests.test_verification_refuses_missing_kind) ... ok
+test_verification_refuses_prepare (test_harness.HarnessTests.test_verification_refuses_prepare) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 0.417s
+
+OK

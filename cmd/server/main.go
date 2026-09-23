@@ -206,6 +206,13 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// Stop all inference producers before their event receiver.
+	if quickTranscriptionService != nil {
+		quickTranscriptionService.Close()
+	}
+	if taskQueue != nil {
+		taskQueue.Stop()
+	}
 	// Shutdown broadcaster to close all active SSE connections
 	if broadcaster != nil {
 		broadcaster.Shutdown()

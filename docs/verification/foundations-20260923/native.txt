@@ -1,0 +1,81 @@
++ swift test --package-path macos --scratch-path .local/swift-build --cache-path .local/swift-cache
+Building for debugging...
+[0/11] Write sources
+[2/11] /Users/amirkhan/sandwich/.local/swift-build/arm64-apple-macosx/debug/MeetingBoxPackageTests.derived/runner.swift
+[3/11] Write MeetingBox-entitlement.plist
+[4/11] Write sources
+[5/11] Write swift-version--58304C5D6DBC2206.txt
+[7/21] Compiling MeetingBox MeetingRepository.swift
+[8/22] Compiling MeetingBox Models.swift
+[9/22] Compiling MeetingBox HubClient.swift
+[10/22] Compiling MeetingBox WhisperWorker.swift
+[11/22] Emitting module MeetingBox
+[12/22] Compiling MeetingBox AudioArchive.swift
+[13/22] Compiling MeetingBox AudioTypes.swift
+[14/22] Compiling MeetingBox AudioPipeline.swift
+[15/22] Compiling MeetingBox AppModel.swift
+[16/22] Compiling MeetingBox MeetingAudioCapture.swift
+[17/22] Compiling MeetingBox MeetingBoxApp.swift
+[17/22] Write Objects.LinkFileList
+[18/22] Linking MeetingBox
+[19/22] Applying MeetingBox
+[21/26] Compiling MeetingBoxTests AudioTests.swift
+[22/26] Compiling MeetingBoxTests RepositoryTests.swift
+[23/26] Compiling MeetingBoxTests HubConfigurationTests.swift
+[24/26] Emitting module MeetingBoxTests
+[25/28] Emitting module MeetingBoxPackageTests
+[26/28] Compiling MeetingBoxPackageTests runner.swift
+[26/28] Write Objects.LinkFileList
+[27/28] Linking MeetingBoxPackageTests
+Build complete! (13.92s)
+Test Suite 'All tests' started at 2026-09-23 16:49:22.357.
+Test Suite 'MeetingBoxPackageTests.xctest' started at 2026-09-23 16:49:22.358.
+Test Suite 'AudioTests' started at 2026-09-23 16:49:22.358.
+Test Case '-[MeetingBoxTests.AudioTests testImportCopiesOriginalAndFlushesFinalShortChunk]' started.
+Test Case '-[MeetingBoxTests.AudioTests testImportCopiesOriginalAndFlushesFinalShortChunk]' passed (0.081 seconds).
+Test Case '-[MeetingBoxTests.AudioTests testInterruptedIngestCannotBeFinalized]' started.
+Test Case '-[MeetingBoxTests.AudioTests testInterruptedIngestCannotBeFinalized]' passed (0.001 seconds).
+Test Case '-[MeetingBoxTests.AudioTests testResamplingPreservesInitialDelayAndCaptureGap]' started.
+Test Case '-[MeetingBoxTests.AudioTests testResamplingPreservesInitialDelayAndCaptureGap]' passed (0.012 seconds).
+Test Case '-[MeetingBoxTests.AudioTests testWAVIsSigned16BitPCMAndHandlesNonfiniteValues]' started.
+Test Case '-[MeetingBoxTests.AudioTests testWAVIsSigned16BitPCMAndHandlesNonfiniteValues]' passed (0.000 seconds).
+Test Case '-[MeetingBoxTests.AudioTests testWhisperOffsetsUseMillisecondsAndPreserveStableIDs]' started.
+Test Case '-[MeetingBoxTests.AudioTests testWhisperOffsetsUseMillisecondsAndPreserveStableIDs]' passed (0.000 seconds).
+Test Case '-[MeetingBoxTests.AudioTests testWorkerHandlesLargeStderrAndCachesUntilAcknowledged]' started.
+Test Case '-[MeetingBoxTests.AudioTests testWorkerHandlesLargeStderrAndCachesUntilAcknowledged]' passed (0.348 seconds).
+Test Suite 'AudioTests' passed at 2026-09-23 16:49:22.800.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.442 (0.442) seconds
+Test Suite 'MeetingBoxPackageTests.xctest' passed at 2026-09-23 16:49:22.800.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.442 (0.442) seconds
+Test Suite 'All tests' passed at 2026-09-23 16:49:22.800.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.442 (0.443) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite HubConfigurationTests started.
+◇ Suite SnapshotOrderingTests started.
+◇ Suite RepositoryTests started.
+◇ Test decodesHubReportContract() started.
+◇ Test refusesPublicEndpointsAndEmbeddedCredentials() started.
+◇ Test rebuiltHubRequiresHTTPSyncAndRejectsPriorSocket() started.
+◇ Test delayedHTTPSnapshotCannotUndoCompletedWebSocket() started.
+◇ Test invalidSegmentsDoNotConsumeSequenceOrSourceID() started.
+◇ Test corruptNeighborDoesNotHideHealthyMeetings() started.
+◇ Test permitsLocalEndpoints() started.
+◇ Test replayAfterRestartKeepsStableIDsAndContiguousSequences() started.
+◇ Test legacyLocalFileWithoutRevisionStillLoads() started.
+◇ Test transcriptAndSyncStateSurviveReload() started.
+✔ Test rebuiltHubRequiresHTTPSyncAndRejectsPriorSocket() passed after 0.001 seconds.
+✔ Test permitsLocalEndpoints() passed after 0.001 seconds.
+✔ Test delayedHTTPSnapshotCannotUndoCompletedWebSocket() passed after 0.001 seconds.
+✔ Test decodesHubReportContract() passed after 0.001 seconds.
+✔ Test legacyLocalFileWithoutRevisionStillLoads() passed after 0.001 seconds.
+✔ Suite SnapshotOrderingTests passed after 0.001 seconds.
+✔ Test invalidSegmentsDoNotConsumeSequenceOrSourceID() passed after 0.001 seconds.
+✔ Test refusesPublicEndpointsAndEmbeddedCredentials() passed after 0.001 seconds.
+✔ Suite HubConfigurationTests passed after 0.001 seconds.
+✔ Test transcriptAndSyncStateSurviveReload() passed after 0.002 seconds.
+✔ Test replayAfterRestartKeepsStableIDsAndContiguousSequences() passed after 0.002 seconds.
+✔ Test corruptNeighborDoesNotHideHealthyMeetings() passed after 0.003 seconds.
+✔ Suite RepositoryTests passed after 0.003 seconds.
+✔ Test run with 10 tests in 3 suites passed after 0.003 seconds.

@@ -39,12 +39,14 @@ struct HubMeeting: Codable {
     var title: String
     var status: String
     var lastSequence: Int
+    var revision: Int
+    var serverID: String
     var segments: [TranscriptSegment]
     var report: MeetingReport?
     var error: String?
     enum CodingKeys: String, CodingKey {
-        case title, status, segments, report, error
-        case meetingID = "meeting_id", lastSequence = "last_sequence"
+        case title, status, segments, report, error, revision
+        case meetingID = "meeting_id", lastSequence = "last_sequence", serverID = "server_id"
     }
 }
 
@@ -59,9 +61,30 @@ struct LocalMeeting: Codable, Identifiable {
     var endSynced = false
     var localState = "ready"
     var hubStatus = "offline"
+    var hubRevision: Int?
+    var hubServerID: String?
     var report: MeetingReport?
     var error: String?
     var pendingCount: Int { max(0, segments.count - ackSequence) }
+
+    @discardableResult
+    mutating func applyHubSnapshot(_ snapshot: HubMeeting, allowServerChange: Bool = false) -> Bool {
+        guard snapshot.meetingID == id, snapshot.revision >= 1 else { return false }
+        if let hubServerID, hubServerID != snapshot.serverID {
+            // Only the sequential authenticated HTTP sync may accept a rebuilt hub.
+            // A stale WebSocket belonging to the prior server cannot switch it back.
+            guard allowServerChange else { return false }
+        } else if let hubRevision, snapshot.revision <= hubRevision {
+            return false
+        }
+        hubServerID = snapshot.serverID
+        hubRevision = snapshot.revision
+        hubStatus = snapshot.status
+        report = snapshot.report
+        if let remoteError = snapshot.error { error = remoteError }
+        else if ended { error = nil }
+        return true
+    }
 
     mutating func reconcileAcknowledgment(_ ack: Int, hubStatus: String) throws {
         guard ack >= 0, ack <= segments.count else {

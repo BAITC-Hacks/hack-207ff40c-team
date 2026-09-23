@@ -105,3 +105,31 @@ def test_native_batching_lost_ack_end_replay_retry_and_final_websocket(tmp_path)
             assert action["owner"] is None and action["due"] is None
             assert action["evidence"] == [101]
             assert local_end_synced is True
+
+
+def test_snapshot_revision_is_durable_monotonic_and_shared_by_http_and_websocket(tmp_path, monkeypatch):
+    # Clock rollback cannot make an old HTTP response appear newer than a WS update.
+    from meetingbox import store as store_module
+    from meetingbox.store import Store
+    monkeypatch.setattr(store_module.time, "time", lambda: 1000.0)
+    settings = Settings(token="native-ordering-token-12345", database=tmp_path / "hub.sqlite3")
+    app = create_app(settings, reasoner=RecoverableLocalModel(), start_worker=False)
+    meeting_id = str(uuid4())
+    headers = {"Authorization": "Bearer " + settings.token}
+    with TestClient(app) as client:
+        client.headers.update(headers)
+        before = client.post("/meetings/start", json={"meeting_id": meeting_id, "title": "Ordering"}).json()
+        with client.websocket_connect("/ws/" + meeting_id, headers=headers) as socket:
+            assert socket.receive_json()["meeting"]["revision"] == before["revision"]
+            monkeypatch.setattr(store_module.time, "time", lambda: 10.0)
+            response = client.post("/meetings/" + meeting_id + "/end", json={"last_sequence": 0}).json()
+            latest = socket.receive_json()["meeting"]
+            assert latest["revision"] > before["revision"]
+            assert latest["revision"] == response["revision"]
+            assert latest["server_id"] == before["server_id"]
+    reopened = Store(settings.database)
+    try:
+        assert reopened.snapshot(meeting_id)["revision"] == latest["revision"]
+        assert reopened.server_id == latest["server_id"]
+    finally:
+        reopened.close()

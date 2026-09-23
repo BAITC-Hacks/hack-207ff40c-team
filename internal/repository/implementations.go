@@ -2,6 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strings"
+
+	"gorm.io/gorm/clause"
 	"scriberr/internal/models"
 	"time"
 
@@ -89,6 +93,26 @@ func (r *jobRepository) FindWithAssociations(ctx context.Context, id string) (*m
 	return &job, nil
 }
 
+// ValidateJobSort accepts public column names, never SQL expressions.
+func ValidateJobSort(column, direction string) (string, string, error) {
+	if column == "" {
+		column = "created_at"
+	}
+	switch column {
+	case "created_at", "updated_at", "title", "status", "audio_path", "id":
+	default:
+		return "", "", fmt.Errorf("unsupported sort_by")
+	}
+	if direction == "" {
+		direction = "desc"
+	}
+	direction = strings.ToLower(direction)
+	if direction != "asc" && direction != "desc" {
+		return "", "", fmt.Errorf("unsupported sort_order")
+	}
+	return column, direction, nil
+}
+
 func (r *jobRepository) ListWithParams(ctx context.Context, offset, limit int, sortBy, sortOrder, searchQuery string, updatedAfter *time.Time) ([]models.TranscriptionJob, int64, error) {
 	var jobs []models.TranscriptionJob
 	var count int64
@@ -114,19 +138,14 @@ func (r *jobRepository) ListWithParams(ctx context.Context, offset, limit int, s
 		return nil, 0, err
 	}
 
-	// Apply sorting
-	if sortBy != "" {
-		if sortOrder == "" {
-			sortOrder = "desc"
-		}
-		db = db.Order(sortBy + " " + sortOrder)
-	} else {
-		// Default sort
-		db = db.Order("created_at desc")
+	column, direction, err := ValidateJobSort(sortBy, sortOrder)
+	if err != nil {
+		return nil, 0, err
 	}
+	db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: column}, Desc: direction == "desc"})
 
 	// Apply pagination
-	err := db.Offset(offset).Limit(limit).Find(&jobs).Error
+	err = db.Offset(offset).Limit(limit).Find(&jobs).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -144,9 +163,12 @@ func (r *jobRepository) ListByUser(ctx context.Context, userID uint, offset, lim
 }
 
 func (r *jobRepository) UpdateTranscript(ctx context.Context, jobID string, transcript string) error {
-	return r.db.WithContext(ctx).Model(&models.TranscriptionJob{}).
-		Where("id = ?", jobID).
-		Update("transcript", transcript).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.TranscriptionJob{}).Where("id = ?", jobID).Updates(map[string]any{"transcript": transcript, "summary": nil}).Error; err != nil {
+			return err
+		}
+		return tx.Where("transcription_id = ?", jobID).Delete(&models.Summary{}).Error
+	})
 }
 
 func (r *jobRepository) CreateExecution(ctx context.Context, execution *models.TranscriptionJobExecution) error {

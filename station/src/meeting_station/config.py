@@ -1,4 +1,5 @@
 import ipaddress
+import math
 import os
 import ssl
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ class Settings:
     worker_url: str = "http://127.0.0.1:8765"
     data_dir: Path = Path("data/station")
     max_upload_bytes: int = 512 * 1024 * 1024
+    max_audio_seconds: float = 14400
     poll_seconds: float = 2.0
     request_timeout: float = 120.0
     alsa_device: str = "default"
@@ -62,8 +64,12 @@ class Settings:
             raise ValueError("Browser controller must use HTTP on 127.0.0.1")
         if self.browser_token and (len(self.browser_token) < 16 or self.browser_token != self.browser_token.strip()):
             raise ValueError("MI_STATION_BROWSER_TOKEN must contain at least 16 characters")
-        if self.max_upload_bytes < 1 or self.poll_seconds <= 0 or self.request_timeout <= 0:
-            raise ValueError("Upload size, polling interval and request timeout must be positive")
+        if any(not math.isfinite(value) or value <= 0 for value in (self.max_upload_bytes, self.poll_seconds, self.request_timeout, self.max_audio_seconds)):
+            raise ValueError("Upload size, recording duration, polling interval and request timeout must be finite and positive")
+
+    @property
+    def recording_seconds(self):
+        return min(int(self.max_audio_seconds), max(0, (self.max_upload_bytes - 4096) // 32000))
 
     @classmethod
     def from_env(cls):
@@ -71,6 +77,7 @@ class Settings:
                    worker_url=os.getenv("MI_STATION_WORKER_URL", "http://127.0.0.1:8765"),
                    data_dir=Path(os.getenv("MI_STATION_DATA_DIR", "data/station")),
                    max_upload_bytes=int(os.getenv("MI_STATION_MAX_UPLOAD_BYTES", str(512 * 1024 * 1024))),
+                   max_audio_seconds=float(os.getenv('MI_STATION_MAX_AUDIO_SECONDS', os.getenv('MI_MAX_AUDIO_SECONDS', '14400'))),
                    alsa_device=os.getenv("MI_STATION_ALSA_DEVICE", "default"),
                    bind_host=os.getenv("MI_STATION_BIND_HOST", "127.0.0.1"),
                    bind_port=int(os.getenv("MI_STATION_BIND_PORT", "8766")),

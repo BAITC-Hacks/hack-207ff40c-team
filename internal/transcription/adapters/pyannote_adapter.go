@@ -328,7 +328,7 @@ func (p *PyAnnoteAdapter) Diarize(ctx context.Context, input interfaces.AudioInp
 		cmd.Stderr = logFile
 	}
 
-	logger.Info("Executing PyAnnote command", "args", strings.Join(args, " "))
+	logger.Info("Executing PyAnnote command", "args", strings.Join(redactCommandArgs(args), " "))
 
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() == context.Canceled {
@@ -406,7 +406,9 @@ func (p *PyAnnoteAdapter) buildPyAnnoteArgs(input interfaces.AudioInput, params 
 		args = append(args, "--segmentation-offset", fmt.Sprintf("%.3f", offset))
 	}
 
-	// Device is handled automatically by the script
+	if device := p.GetStringParameter(params, "device"); device != "" {
+		args = append(args, "--device", device)
+	}
 
 	return args, nil
 }

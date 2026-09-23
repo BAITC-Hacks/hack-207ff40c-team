@@ -84,11 +84,22 @@ def capabilities(config: Settings):
     def configured_model(package, model):
         return {"ready": importlib.util.find_spec(package) is not None and Path(model).is_dir(),
                 "detail": "Requires installed package and explicit local model directory"}
+    diarization = local['diarization']
+    if config.diarization_backend == 'pyannote':
+        from .diarization import pyannote_config
+        try:
+            pyannote_config(config.diarization_model)
+            ready = importlib.util.find_spec('pyannote.audio') is not None
+        except (RuntimeError, ModuleNotFoundError, ValueError):
+            ready = False
+        diarization = {'ready': ready, 'detail': 'Requires pyannote.audio and a local pipeline configuration with local model assets'}
+    elif config.diarization_backend != 'sherpa-onnx':
+        diarization = {'ready': False, 'detail': 'Unknown diarization backend'}
     return {"whisper-cpp": local["transcription"],
             "shyngys": configured_model("transformers", config.shyngys_model),
-            "gigaam": configured_model("transformers", config.gigaam_model),
+            "gigaam": dict(configured_model("transformers", config.gigaam_model), timed_segments=False, diarization_supported=False),
             "mlx-distil-whisper": configured_model("mlx_whisper", config.distil_model),
-            "diarization": local["diarization"]}
+            "diarization": diarization}
 
 
 class MLXWhisperAdapter(ASRAdapter):

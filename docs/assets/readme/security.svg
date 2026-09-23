@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Защита на каждом уровне</title>
+  <desc id="desc">Настроенная установка защищает браузерный трафик по HTTPS, проверяет оба устройства через взаимный TLS, шифрует архив с помощью gocryptfs и запускает ИИ-модели локально. Эти меры требуют настройки при развёртывании.</desc>
+  <rect width="1200" height="260" rx="18" fill="#122B43"/>
+  <g stroke="#385167"><path d="M300 32V228M600 32V228M900 32V228"/></g>
+  <g stroke="#8AD8C6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="126" y="71" width="48" height="36" rx="6"/><path d="M136 71V59a14 14 0 0 1 28 0v12M150 86V93"/>
+    <rect x="415" y="60" width="25" height="39" rx="5"/><rect x="460" y="60" width="25" height="39" rx="5"/><path d="M440 72h20m-6-5 6 5-6 5M460 89h-20m6-5-6 5 6 5"/>
+    <path d="M750 44 778 55V78c0 19-28 32-28 32s-28-13-28-32V55z"/><rect x="740" y="72" width="20" height="16" rx="3"/><path d="M744 72v-5a6 6 0 0 1 12 0v5"/>
+    <rect x="1028" y="53" width="44" height="44" rx="6"/><rect x="1040" y="65" width="20" height="20" rx="2"/><path d="M1039 45v8m11-8v8m11-8v8m-22 44v8m11-8v8m11-8v8m-41-41h8m-8 11h8m-8 11h8m44-22h8m-8 11h8m-8 11h8"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <g fill="#FFF" font-size="24" font-weight="700"><text x="150" y="148">HTTPS</text><text x="450" y="148">Взаимный TLS</text><text x="750" y="148">Шифрование</text><text x="1050" y="148">Локальный ИИ</text></g>
+    <g fill="#B8CDD9" font-size="17"><text x="150" y="185">Браузер ↔ станция</text><text x="150" y="212">Собственный центр доверия</text><text x="450" y="185">Станция ↔ вычислитель</text><text x="450" y="212">Проверка обоих устройств</text><text x="750" y="185">Аудио, текст и секреты</text><text x="750" y="212">Содержимое и имена файлов</text><text x="1050" y="185">Модели на вашем оборудовании</text><text x="1050" y="212">Без облачного ИИ</text></g>
+  </g>
+</svg>

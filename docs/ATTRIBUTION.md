@@ -11,6 +11,11 @@ explicitly synthetic acceptance data, with real local requests and no model
 inference. They are separate from the enclosure illustrations and speech-quality
 evidence. No new artwork license or third-party endorsement is claimed.
 
+Обновление README от 23 сентября добавляет три оригинальные SVG-иллюстрации:
+обложку, схему локальной архитектуры и меры защиты аппаратной установки. Внешних
+изображений или зависимостей для них нет. Ориентиры оформления и различие между
+иллюстрациями и настоящими снимками описаны в реестре изображений.
+
 ## Existing application
 
 Cloned on 2026-09-23 from
@@ -40,6 +45,13 @@ No new ASR, diarization or language-model algorithm is claimed. No measured
 global novelty claim is made.
 
 ## Dependencies and model assets
+
+The foundation repairs add no model algorithm or borrowed implementation.
+Go 1.24.4 and the modules already pinned in `go.mod`/`go.sum` were provisioned
+locally for compilation and race checks; their binaries/cache remain outside Git.
+The retained Voxtral adapter now checks the exact processor/tokenizer API versions
+documented with primary source links in its [adapter notes](../internal/transcription/adapters/py/README.md).
+Those optional ML packages were inspected, not installed or run with weights.
 
 Python package versions used for core checks are in
 [requirements/validation.lock](../requirements/validation.lock); frontend versions

@@ -1,33 +1,51 @@
-# README visuals
+# Изображения README
 
-The four supplied artworks were organized here on 2026-09-23 without changing
-their bytes. Their original filenames were:
+Четыре предоставленных участником изображения перенесены сюда 23 сентября
+2026 года без изменения содержимого файлов.
 
-| Repository file | Supplied file | Description |
+| Файл в репозитории | Исходное имя | Описание |
 | --- | --- | --- |
-| `meet-box-wordmark.png` | `Дизайн без названия (1).png` | Participant-supplied MEET-BOX wordmark. |
-| `samruk-kazyna-logo.jpg` | `thumb.jpg` | Case-owner identity, supplied by the participant. |
-| `station-enclosure-concept.png` | `samruk_radxa_enclosure.png` | Concept render of the proposed station enclosure. |
-| `station-turntable.gif` | `turntable.gif` | Animated enclosure visualization. |
+| `meet-box-wordmark.png` | `Дизайн без названия (1).png` | Логотип проекта MEET-BOX. |
+| `samruk-kazyna-logo.jpg` | `thumb.jpg` | Символика владельца задачи. |
+| `station-enclosure-concept.png` | `samruk_radxa_enclosure.png` | Концепт корпуса комнатной станции. |
+| `station-turntable.gif` | `turntable.gif` | Вращающаяся визуализация корпуса. |
 
-The case-owner logo identifies the challenge. The enclosure images are design
-concepts, not hardware test evidence, validated CAD or manufacturing drawings.
-No new license for the supplied branding/artwork is inferred from the source-code
-license; retain the applicable owners' rights and source attribution.
+Логотип Самрук-Казына обозначает владельца кейса. Изображения корпуса — концепты,
+а не результаты аппаратных испытаний, проверенные CAD-модели или производственные
+чертежи. Лицензия исходного кода не распространяет автоматически новые права
+на предоставленную символику; права её владельцев сохраняются.
 
-`01-import.png`, `02-transcript.png`, `03-review.png` and
-`04-reviewed-minutes.png` are screenshots of the current application, captured
-with the installed Playwright/Chromium against real loopback station/worker
-services. The review image is a browser element screenshot of the complete review
-panel. Other images capture the page. They were not generated or retouched.
+## Снимки приложения
 
-Data comes from the explicitly synthetic `scripts/check-ui.py` acceptance seed.
-The capture navigated the import/transcript/review interfaces, corrected the
-assignee and date, saved review revision 1 and reloaded the persisted result.
-The fixture intentionally includes an incorrect draft owner/deadline to exercise
-correction. No audio recognition or language-model generation occurred; missing
-model notices remain visible. No API responses were replaced, no existing user
-archive was opened, and no external browser requests were made.
+`01-import.png`, `02-transcript.png`, `03-review.png` и
+`04-reviewed-minutes.png` получены установленным Playwright/Chromium при работе
+с настоящими локальными сервисами станции и вычислителя. Снимок проверки
+показывает всю панель редактирования; остальные — страницы приложения.
+Изображения не генерировались и не ретушировались.
 
-The [capture receipt](capture-receipt.json) records the steps, timestamp and scope.
-Full product verification is recorded separately under `docs/verification/`.
+Данные взяты из явно синтетического проверочного примера `scripts/check-ui.py`.
+При съёмке открыты импорт, расшифровка и проверка, исправлены ответственный и
+дата, сохранена версия 1 и заново открыт сохранённый результат. В исходном
+черновике намеренно ошибочны ответственный и срок, чтобы проверить исправление.
+Распознавание аудио и генерация языковой моделью не выполнялись; сообщения
+об отсутствующих моделях видны. Ответы API не подменялись, пользовательский
+архив не открывался, внешних запросов из браузера не было.
+
+[Запись проверки](capture-receipt.json) содержит шаги, время и границы проверки.
+Полные результаты испытаний приложения хранятся отдельно в `docs/verification/`.
+
+## Схемы и оформление
+
+`hero.svg`, `local-architecture.svg` и `security.svg` созданы для этого README
+23 сентября 2026 года. Это SVG-иллюстрации с русскими подписями; они не загружают
+шрифты, сценарии или изображения из внешних сервисов. Документ на обложке —
+иллюстрация, а не снимок интерфейса. Схемы описывают настроенную установку
+из двух устройств: локальный запуск на одном компьютере сам не создаёт HTTPS
+или зашифрованное хранилище.
+
+Ориентирами для структуры были официальные README
+[LocalSend](https://github.com/localsend/localsend),
+[Appwrite](https://github.com/appwrite/appwrite) и
+[Supabase](https://github.com/supabase/supabase): понятное назначение, короткая
+навигация, изображения продукта и отдельные инструкции установки. Их тексты
+и изображения не копировались. Предоставленные растровые файлы не изменены.

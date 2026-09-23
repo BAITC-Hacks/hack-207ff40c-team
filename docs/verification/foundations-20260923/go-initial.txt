@@ -1,0 +1,408 @@
++ npm --prefix web/frontend run build -- --outDir ../../.local/retained-ui --emptyOutDir
+
+> frontend@0.0.0 build
+> tsc -b && vite build --outDir ../../.local/retained-ui --emptyOutDir
+
+vite v7.1.3 building for production...
+transforming...
+✓ 2712 modules transformed.
+rendering chunks...
+computing gzip size...
+../../.local/retained-ui/meeting-build.json                                 0.04 kB │ gzip:   0.05 kB
+../../.local/retained-ui/registerSW.js                                      0.13 kB
+../../.local/retained-ui/manifest.webmanifest                               0.36 kB
+../../.local/retained-ui/index.html                                         0.91 kB │ gzip:   0.45 kB
+../../.local/retained-ui/assets/KaTeX_Size3-Regular-CTq5MqoE.woff           4.42 kB
+../../.local/retained-ui/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2          4.93 kB
+../../.local/retained-ui/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2          5.21 kB
+../../.local/retained-ui/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2          5.47 kB
+../../.local/retained-ui/assets/KaTeX_Size4-Regular-BF-4gkZK.woff           5.98 kB
+../../.local/retained-ui/assets/KaTeX_Size2-Regular-oD1tc_U0.woff           6.19 kB
+../../.local/retained-ui/assets/KaTeX_Size1-Regular-C195tn64.woff           6.50 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2    6.91 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2       6.91 kB
+../../.local/retained-ui/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf            7.59 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff     7.66 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff        7.72 kB
+../../.local/retained-ui/assets/KaTeX_Script-Regular-D3wIWfF6.woff2         9.64 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2     10.34 kB
+../../.local/retained-ui/assets/KaTeX_Size4-Regular-DWFBv043.ttf           10.36 kB
+../../.local/retained-ui/assets/KaTeX_Script-Regular-D5yQViql.woff         10.59 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2       11.32 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2          11.35 kB
+../../.local/retained-ui/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf           11.51 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2      12.03 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2        12.22 kB
+../../.local/retained-ui/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf           12.23 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff      12.32 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf     12.34 kB
+../../.local/retained-ui/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf        12.37 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff        13.21 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff           13.30 kB
+../../.local/retained-ui/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2    13.57 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff       14.11 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff         14.41 kB
+../../.local/retained-ui/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff     16.03 kB
+../../.local/retained-ui/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2       16.40 kB
+../../.local/retained-ui/assets/KaTeX_Math-Italic-t53AETM-.woff2           16.44 kB
+../../.local/retained-ui/assets/KaTeX_Script-Regular-C5JkGWo-.ttf          16.65 kB
+../../.local/retained-ui/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2       16.78 kB
+../../.local/retained-ui/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2           16.99 kB
+../../.local/retained-ui/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff        18.67 kB
+../../.local/retained-ui/assets/KaTeX_Math-Italic-DA0__PXp.woff            18.75 kB
+../../.local/retained-ui/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff        19.41 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf       19.44 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Regular-CB_wures.ttf         19.57 kB
+../../.local/retained-ui/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf            19.58 kB
+../../.local/retained-ui/assets/KaTeX_Main-Italic-BMLOBm91.woff            19.68 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf        22.36 kB
+../../.local/retained-ui/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf          24.50 kB
+../../.local/retained-ui/assets/KaTeX_Main-Bold-Cx986IdX.woff2             25.32 kB
+../../.local/retained-ui/assets/KaTeX_Main-Regular-B22Nviop.woff2          26.27 kB
+../../.local/retained-ui/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf      27.56 kB
+../../.local/retained-ui/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2           28.08 kB
+../../.local/retained-ui/assets/KaTeX_Main-Bold-Jm3AIy58.woff              29.91 kB
+../../.local/retained-ui/assets/KaTeX_Main-Regular-Dr94JaBh.woff           30.77 kB
+../../.local/retained-ui/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf         31.20 kB
+../../.local/retained-ui/assets/KaTeX_Math-Italic-flOr_0UB.ttf             31.31 kB
+../../.local/retained-ui/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf         32.97 kB
+../../.local/retained-ui/assets/KaTeX_AMS-Regular-DMm9YOAa.woff            33.52 kB
+../../.local/retained-ui/assets/KaTeX_Main-Italic-3WenGoN9.ttf             33.58 kB
+../../.local/retained-ui/assets/KaTeX_Main-Bold-waoOVXN0.ttf               51.34 kB
+../../.local/retained-ui/assets/KaTeX_Main-Regular-ypZvNtVU.ttf            53.58 kB
+../../.local/retained-ui/assets/KaTeX_AMS-Regular-DRggAlZN.ttf             63.63 kB
+../../.local/retained-ui/assets/MeetingIntelligencePage-Dkatx9QR.css       22.11 kB │ gzip:   4.70 kB
+../../.local/retained-ui/assets/index-BOzD7eCm.css                        162.22 kB │ gzip:  30.42 kB
+../../.local/retained-ui/assets/table-vendor-DoqHAoq-.js                    0.03 kB │ gzip:   0.05 kB
+../../.local/retained-ui/assets/use-mobile-caF0uY9V.js                      0.33 kB │ gzip:   0.24 kB
+../../.local/retained-ui/assets/Layout-DojrJrne.js                          0.39 kB │ gzip:   0.28 kB
+../../.local/retained-ui/assets/textarea-BC2hdWAe.js                        0.66 kB │ gzip:   0.40 kB
+../../.local/retained-ui/assets/popover-wcOViiKd.js                         0.93 kB │ gzip:   0.45 kB
+../../.local/retained-ui/assets/CLIAuthConfirmation-XDOaV3qV.js             3.79 kB │ gzip:   1.70 kB
+../../.local/retained-ui/assets/CLISettingsPage-B1OIW_FV.js                 4.10 kB │ gzip:   1.35 kB
+../../.local/retained-ui/assets/alert-dialog-Bv3E5VdC.js                    4.71 kB │ gzip:   1.71 kB
+../../.local/retained-ui/assets/react-vendor-gH-7aFTg.js                   11.83 kB │ gzip:   4.20 kB
+../../.local/retained-ui/assets/lucide-vendor-BfTFSmam.js                  29.45 kB │ gzip:   6.20 kB
+../../.local/retained-ui/assets/TranscriptionConfigDialog-BuuHY4jn.js      32.33 kB │ gzip:  10.00 kB
+../../.local/retained-ui/assets/MeetingIntelligencePage-woseU9dW.js        55.34 kB │ gzip:  15.81 kB
+../../.local/retained-ui/assets/SettingsPage-Nr44KfBX.js                   60.84 kB │ gzip:  13.94 kB
+../../.local/retained-ui/assets/ui-vendor-CxJurElC.js                      72.89 kB │ gzip:  24.95 kB
+../../.local/retained-ui/assets/AudioDetailView-Cow70TNE.js               108.81 kB │ gzip:  29.82 kB
+../../.local/retained-ui/assets/Header-Dv1XHlzm.js                        139.25 kB │ gzip:  39.23 kB
+../../.local/retained-ui/assets/Dashboard-DaXerJ5P.js                     150.74 kB │ gzip:  48.67 kB
+../../.local/retained-ui/assets/index-CdR2Ajd1.js                         312.00 kB │ gzip:  99.09 kB
+../../.local/retained-ui/assets/markdown-vendor-CR1j8uNu.js               573.03 kB │ gzip: 172.25 kB
+✓ built in 1.86s
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+PWA v1.1.0
+mode      generateSW
+precache  25 entries (1705.86 KiB)
+files generated
+  ../../.local/retained-ui/sw.js
+  ../../.local/retained-ui/workbox-8c29f6e4.js
++ /Users/amirkhan/sandwich/.local/tools/go/bin/go test -race ./...
+?   	scriberr/api-docs	[no test files]
+?   	scriberr/cmd/scriberr-cli	[no test files]
+?   	scriberr/cmd/server	[no test files]
+ok  	scriberr/internal/api	7.228s
+?   	scriberr/internal/audio	[no test files]
+?   	scriberr/internal/auth	[no test files]
+ok  	scriberr/internal/cli	3.977s
+?   	scriberr/internal/config	[no test files]
+?   	scriberr/internal/database	[no test files]
+ok  	scriberr/internal/dropzone	2.645s
+?   	scriberr/internal/interfaces	[no test files]
+?   	scriberr/internal/llm	[no test files]
+?   	scriberr/internal/models	[no test files]
+?   	scriberr/internal/processing	[no test files]
+ok  	scriberr/internal/queue	3.306s
+ok  	scriberr/internal/repository	2.975s
+?   	scriberr/internal/service	[no test files]
+ok  	scriberr/internal/sse	3.283s
+ok  	scriberr/internal/transcription	4.698s
+ok  	scriberr/internal/transcription/adapters	3.496s
+?   	scriberr/internal/transcription/interfaces	[no test files]
+?   	scriberr/internal/transcription/pipeline	[no test files]
+?   	scriberr/internal/transcription/registry	[no test files]
+?   	scriberr/internal/web	[no test files]
+ok  	scriberr/internal/webhook	10.131s
+?   	scriberr/pkg/downloader	[no test files]
+?   	scriberr/pkg/logger	[no test files]
+ok  	scriberr/pkg/middleware	4.159s
+INFO  17:00:59 GET /api/v1/api-keys/ [32m200[0m 0.73ms
+INFO  17:00:59 POST /api/v1/api-keys/ [32m200[0m 1.52ms
+INFO  17:00:59 DELETE /api/v1/api-keys/3 [32m200[0m 0.74ms
+INFO  17:01:00 POST /api/v1/auth/change-password [32m200[0m 1051.60ms
+
+2026/09/23 17:01:03 [31;1m/Users/amirkhan/sandwich/internal/repository/implementations.go:35 [35;1mrecord not found
+[0m[33m[0.341ms] [34;1m[rows:0][0m SELECT * FROM `users` WHERE username = "updateduser" ORDER BY `users`.`id` LIMIT 1
+INFO  17:01:03 POST /api/v1/auth/change-username [32m200[0m 529.95ms
+INFO  17:01:03 POST /api/v1/chat/sessions [32m201[0m 3.43ms
+
+2026/09/23 17:01:03 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[1.720ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "non-existent" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+INFO  17:01:03 POST /api/v1/chat/sessions [31m404[0m 1.85ms
+INFO  17:01:04 DELETE /api/v1/chat/sessions/test-chat-session-TestAPIHandlerTestSuite_TestDeleteChatSession [32m204[0m 0.81ms
+INFO  17:01:04 DELETE /api/v1/transcription/32d2b78c-6453-4c60-889c-5dbf4fff2b71 [32m200[0m 6.55ms
+
+2026/09/23 17:01:04 [31;1m/Users/amirkhan/sandwich/internal/repository/implementations.go:89 [35;1mrecord not found
+[0m[33m[1.754ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "32d2b78c-6453-4c60-889c-5dbf4fff2b71" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+INFO  17:01:04 GET /api/v1/transcription/32d2b78c-6453-4c60-889c-5dbf4fff2b71 [31m404[0m 2.63ms
+INFO  17:01:05 GET /api/v1/chat/models [32m200[0m 1.47ms
+INFO  17:01:05 GET /api/v1/chat/transcriptions/8819e2bf-8487-4738-8809-b7876bb3ae0d/sessions [32m200[0m 1.90ms
+INFO  17:01:06 GET /api/v1/admin/queue/stats [32m200[0m 1.71ms
+INFO  17:01:07 GET /api/v1/auth/registration-status [32m200[0m 0.20ms
+
+2026/09/23 17:01:07 [31;1m/Users/amirkhan/sandwich/internal/repository/implementations.go:378 [35;1mrecord not found
+[0m[33m[0.412ms] [34;1m[rows:0][0m SELECT * FROM `summaries` WHERE transcription_id = "7443274d-573f-4d84-b94e-713b2b0afe73" ORDER BY created_at DESC,`summaries`.`id` LIMIT 1
+INFO  17:01:07 GET /api/v1/transcription/7443274d-573f-4d84-b94e-713b2b0afe73/summary [32m200[0m 2.75ms
+INFO  17:01:07 GET /api/v1/transcription/7443274d-573f-4d84-b94e-713b2b0afe73/summary [32m200[0m 0.65ms
+INFO  17:01:08 GET /api/v1/transcription/models [32m200[0m 0.89ms
+INFO  17:01:08 GET /api/v1/transcription/c1541a65-1c48-433c-9cf3-10b6deef11a3 [32m200[0m 3.53ms
+INFO  17:01:10 POST /api/v1/auth/login [31m400[0m 0.02ms
+INFO  17:01:10 POST /api/v1/auth/login [31m400[0m 0.06ms
+INFO  17:01:11 DELETE /api/v1/transcription/27c7e53d-73cf-4851-ac77-756af02fd5d6 [32m200[0m 6.59ms
+INFO  17:01:11 GET /api/v1/transcription/list?updated_after=2026-09-23T17:01:06+05:00 [32m200[0m 6.04ms
+time=17:01:12 level="INFO " msg="User login successful" username=testuser
+INFO  17:01:12 POST /api/v1/auth/login [32m200[0m 521.98ms
+INFO  17:01:12 POST /api/v1/auth/logout [32m200[0m 0.03ms
+
+2026/09/23 17:01:13 [31;1m/Users/amirkhan/sandwich/internal/repository/implementations.go:89 [35;1mrecord not found
+[0m[33m[1.766ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "nonexistent-job" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+INFO  17:01:13 GET /api/v1/transcription/nonexistent-job [31m404[0m 2.70ms
+
+2026/09/23 17:01:13 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[1.723ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "nonexistent-job" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+
+2026/09/23 17:01:13 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[1.632ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "nonexistent-job" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+INFO  17:01:13 GET /api/v1/transcription/nonexistent-job/transcript [31m404[0m 2.48ms
+
+2026/09/23 17:01:13 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[1.406ms] [34;1m[rows:0][0m SELECT * FROM `transcription_profiles` WHERE id = "nonexistent-profile" ORDER BY `transcription_profiles`.`id` LIMIT 1
+INFO  17:01:13 GET /api/v1/profiles/nonexistent-profile [31m404[0m 2.26ms
+
+2026/09/23 17:01:13 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[0.276ms] [34;1m[rows:0][0m SELECT * FROM `notes` WHERE id = "nonexistent-note" ORDER BY `notes`.`id` LIMIT 1
+INFO  17:01:13 GET /api/v1/notes/nonexistent-note [31m404[0m 1.14ms
+2026/09/23 17:01:13 notes.CreateNote: created note 35fcf811-3275-4261-92a4-2cebfc8e4c70 for transcription 66092497-1b30-4a87-acc8-f4b24a39c423 (start=0 end=5 startTime=0.000 endTime=2.500 quoteLen=15)
+INFO  17:01:13 POST /api/v1/transcription/66092497-1b30-4a87-acc8-f4b24a39c423/notes [32m200[0m 3.80ms
+INFO  17:01:13 GET /api/v1/transcription/66092497-1b30-4a87-acc8-f4b24a39c423/notes [32m200[0m 3.36ms
+INFO  17:01:13 PUT /api/v1/notes/35fcf811-3275-4261-92a4-2cebfc8e4c70 [32m200[0m 1.80ms
+INFO  17:01:13 GET /api/v1/notes/35fcf811-3275-4261-92a4-2cebfc8e4c70 [32m200[0m 1.21ms
+INFO  17:01:13 DELETE /api/v1/notes/35fcf811-3275-4261-92a4-2cebfc8e4c70 [32m200[0m 1.13ms
+INFO  17:01:14 GET /api/v1/profiles/ [32m200[0m 2.44ms
+INFO  17:01:14 POST /api/v1/profiles/ [32m200[0m 2.03ms
+INFO  17:01:14 GET /api/v1/profiles/d7301a8c-3a75-4fcc-894f-8eebfc5bb39c [32m200[0m 2.90ms
+INFO  17:01:14 PUT /api/v1/profiles/d7301a8c-3a75-4fcc-894f-8eebfc5bb39c [32m200[0m 3.72ms
+INFO  17:01:14 DELETE /api/v1/profiles/d7301a8c-3a75-4fcc-894f-8eebfc5bb39c [32m200[0m 2.86ms
+INFO  17:01:14 POST /api/v1/auth/register [31m409[0m 0.18ms
+Debug: Transcript found for session test-chat-session-TestAPIHandlerTestSuite_TestSendChatMessage. Length: 100
+Debug: Parsed 1 segments from transcript
+Debug: Clean transcript length: 57
+Injecting transcript of length 189 into chat context for session test-chat-session-TestAPIHandlerTestSuite_TestSendChatMessage
+Debug: Prepended transcript to first user message
+2026/09/23 17:01:15 [openai] chat stream request model=gpt-4 messages=1 stream=true
+2026/09/23 17:01:15 [openai] chat stream first content model=gpt-4
+2026/09/23 17:01:15 [openai] chat stream done model=gpt-4
+INFO  17:01:15 POST /api/v1/chat/sessions/test-chat-session-TestAPIHandlerTestSuite_TestSendChatMessage/messages [32m200[0m 87.66ms
+2026/09/23 17:01:16 [summarize] start transcription_id=daf1ed71-845a-4d94-a2b8-f9d51d559950 provider=openai model=gpt-3.5-turbo content_len=32
+2026/09/23 17:01:16 [openai] chat stream request model=gpt-3.5-turbo messages=1 stream=true
+2026/09/23 17:01:16 [openai] chat stream first content model=gpt-3.5-turbo
+2026/09/23 17:01:16 [summarize] first_chunk transcription_id=daf1ed71-845a-4d94-a2b8-f9d51d559950 model=gpt-3.5-turbo at_ms=0
+2026/09/23 17:01:16 [openai] chat stream done model=gpt-3.5-turbo
+INFO  17:01:16 POST /api/v1/summarize/ [32m200[0m 79.71ms
+INFO  17:01:16 POST /api/v1/transcription/submit [32m200[0m 6.70ms
+INFO  17:01:17 PUT /api/v1/chat/sessions/test-chat-session-TestAPIHandlerTestSuite_TestUpdateChatSessionTitle/title [32m200[0m 1.23ms
+INFO  17:01:17 PUT /api/v1/transcription/ba02c301-f0ee-47d9-870b-8227305d8914/title [32m200[0m 4.59ms
+INFO  17:01:17 GET /api/v1/transcription/ba02c301-f0ee-47d9-870b-8227305d8914 [32m200[0m 3.44ms
+INFO  17:01:34 GET /api/v1/auth/cli/authorize [32m200[0m 0.47ms
+INFO  17:01:34 POST /api/v1/auth/cli/authorize [31m400[0m 0.13ms
+INFO  17:01:35 GET /api/v1/cli/download?os=linux&arch=amd64 [32m200[0m 6.80ms
+INFO  17:01:35 GET /api/v1/cli/download [31m400[0m 0.02ms
+INFO  17:01:36 GET /api/v1/cli/download?os=unknown&arch=amd64 [31m400[0m 0.02ms
+INFO  17:01:36 GET /api/v1/cli/install [31m400[0m 0.01ms
+--- FAIL: TestCLIHandlerTestSuite (3.77s)
+    --- FAIL: TestCLIHandlerTestSuite/TestConfirmCLIAuthorization (0.53s)
+        cli_handlers_test.go:142: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:142
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 400
+            	Test:       	TestCLIHandlerTestSuite/TestConfirmCLIAuthorization
+        iface.go:275: test panicked: interface conversion: interface {} is nil, not string
+            goroutine 638 [running]:
+            runtime/debug.Stack()
+            	/Users/amirkhan/sandwich/.local/tools/go/src/runtime/debug/stack.go:26 +0x6c
+            github.com/stretchr/testify/suite.failOnPanic(0xc00089c8c0, {0x101abeb00, 0xc0009cba70})
+            	/Users/amirkhan/sandwich/.local/go/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:89 +0x44
+            github.com/stretchr/testify/suite.Run.func1.1()
+            	/Users/amirkhan/sandwich/.local/go/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:184 +0x294
+            panic({0x101abeb00?, 0xc0009cba70?})
+            	/Users/amirkhan/sandwich/.local/tools/go/src/runtime/panic.go:792 +0x124
+            scriberr/tests.(*CLIHandlerTestSuite).TestConfirmCLIAuthorization(0xc0006564d0)
+            	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:148 +0x41c
+            reflect.Value.call({0xc0008b1640?, 0xc000b12878?, 0xc000963c38?}, {0x10151b6e0, 0x4}, {0xc000963e90, 0x1, 0xc0006564d8?})
+            	/Users/amirkhan/sandwich/.local/tools/go/src/reflect/value.go:584 +0x938
+            reflect.Value.Call({0xc0008b1640?, 0xc000b12878?, 0xf?}, {0xc000963e90, 0x1, 0x1})
+            	/Users/amirkhan/sandwich/.local/tools/go/src/reflect/value.go:368 +0x94
+            github.com/stretchr/testify/suite.Run.func1(0xc00089c8c0)
+            	/Users/amirkhan/sandwich/.local/go/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:196 +0x4e0
+            testing.tRunner(0xc00089c8c0, 0xc0008a4360)
+            	/Users/amirkhan/sandwich/.local/tools/go/src/testing/testing.go:1792 +0x184
+            created by testing.(*T).Run in goroutine 631
+            	/Users/amirkhan/sandwich/.local/tools/go/src/testing/testing.go:1851 +0x688
+    --- FAIL: TestCLIHandlerTestSuite/TestGetInstallScript (0.53s)
+        cli_handlers_test.go:160: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 400
+            	Test:       	TestCLIHandlerTestSuite/TestGetInstallScript
+        cli_handlers_test.go:161: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:161
+            	Error:      	Not equal: 
+            	            	expected: "text/x-shellscript"
+            	            	actual  : "text/plain; charset=utf-8"
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1 +1 @@
+            	            	-text/x-shellscript
+            	            	+text/plain; charset=utf-8
+            	Test:       	TestCLIHandlerTestSuite/TestGetInstallScript
+        cli_handlers_test.go:164: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:164
+            	Error:      	"Invalid installation origin or token" does not contain "#!/bin/bash"
+            	Test:       	TestCLIHandlerTestSuite/TestGetInstallScript
+        cli_handlers_test.go:165: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/cli_handlers_test.go:165
+            	Error:      	"Invalid installation origin or token" does not contain "curl -sL"
+            	Test:       	TestCLIHandlerTestSuite/TestGetInstallScript
+
+2026/09/23 17:01:38 [31;1m/Users/amirkhan/sandwich/tests/database_test.go:153 [35;1mrecord not found
+[0m[33m[0.251ms] [34;1m[rows:0][0m SELECT * FROM `api_keys` WHERE `api_keys`.`id` = 3 ORDER BY `api_keys`.`id` LIMIT 1
+
+2026/09/23 17:01:41 [31;1m/Users/amirkhan/sandwich/tests/database_test.go:210 [35;1mrecord not found
+[0m[33m[1.694ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "test-job-crud-123" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+
+2026/09/23 17:01:42 [31;1m/Users/amirkhan/sandwich/tests/database_test.go:376 [35;1mconstraint failed: UNIQUE constraint failed: users.username (2067)
+[0m[33m[0.442ms] [34;1m[rows:0][0m INSERT INTO `users` (`username`,`password`,`default_profile_id`,`auto_transcription_enabled`,`created_at`,`updated_at`) VALUES ("unique-test-user","password2",NULL,false,"2026-09-23 17:01:42.916","2026-09-23 17:01:42.916") RETURNING `id`
+
+2026/09/23 17:01:42 [31;1m/Users/amirkhan/sandwich/tests/database_test.go:394 [35;1mconstraint failed: UNIQUE constraint failed: api_keys.key (2067)
+[0m[33m[0.439ms] [34;1m[rows:0][0m INSERT INTO `api_keys` (`key`,`name`,`description`,`is_active`,`last_used`,`created_at`,`updated_at`) VALUES ("unique-api-key-test","Second Key",NULL,true,NULL,"2026-09-23 17:01:42.917","2026-09-23 17:01:42.917") RETURNING `id`
+
+2026/09/23 17:01:43 [31;1m/Users/amirkhan/sandwich/tests/database_test.go:106 [35;1mrecord not found
+[0m[33m[0.345ms] [34;1m[rows:0][0m SELECT * FROM `users` WHERE `users`.`id` = 14 ORDER BY `users`.`id` LIMIT 1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=0 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model= messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model= choices=1
+2026/09/23 17:01:44 [openai] chat stream request model=gpt-3.5-turbo messages=1 stream=true
+2026/09/23 17:01:44 [openai] chat stream first content model=gpt-3.5-turbo
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=2 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat stream request model=gpt-3.5-turbo messages=1 stream=true
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+2026/09/23 17:01:44 [openai] chat completion request model=gpt-3.5-turbo messages=1 stream=false
+2026/09/23 17:01:44 [openai] chat completion ok model=gpt-3.5-turbo choices=1
+time=17:01:45 level="INFO " msg="Recovering pending jobs from previous server run" count=10
+
+2026/09/23 17:01:46 [31;1m/Users/amirkhan/sandwich/internal/repository/repository.go:34 [35;1mrecord not found
+[0m[33m[1.726ms] [34;1m[rows:0][0m SELECT * FROM `transcription_jobs` WHERE id = "non-existent-job" AND `transcription_jobs`.`deleted_at` IS NULL ORDER BY `transcription_jobs`.`id` LIMIT 1
+time=17:01:48 level="INFO " msg="Killing job" job_id=88b9346e-c557-4d9a-bf70-c6bf6a3c1c08
+time=17:01:48 level="INFO " msg="Job cancelled" worker_id=0 job_id=88b9346e-c557-4d9a-bf70-c6bf6a3c1c08
+time=17:01:50 level=ERROR msg="Job processing failed" worker_id=0 job_id=34b078e0-6b25-4429-9424-7310d4f21e7a error="assert.AnError general error for testing"
+time=17:01:51 level="INFO " msg="Recovering pending jobs from previous server run" count=3
+time=17:01:53 level="INFO " msg="Recovering pending jobs from previous server run" count=1
+time=17:01:53 level="INFO " msg="Found zombie jobs from previous run" count=1
+time=17:01:53 level="INFO " msg="Resetting zombie job" job_id=69b673dd-8fde-4ae4-9b96-12ddf4df0e67
+--- FAIL: TestQueueTestSuite (9.62s)
+    --- FAIL: TestQueueTestSuite/TestKillNonRunningJob (0.55s)
+        queue_test.go:210: 
+            	Error Trace:	/Users/amirkhan/sandwich/tests/queue_test.go:210
+            	Error:      	"job non-existent-job is not currently running in this queue" does not contain "not found"
+            	Test:       	TestQueueTestSuite/TestKillNonRunningJob
+INFO  17:01:53 GET /api/v1/api-keys/ [31m401[0m 0.04ms
+INFO  17:01:53 POST /api/v1/api-keys/ [31m401[0m 0.01ms
+INFO  17:01:53 DELETE /api/v1/api-keys/123 [31m401[0m 0.02ms
+INFO  17:01:53 POST /api/v1/auth/change-password [31m401[0m 0.03ms
+INFO  17:01:53 POST /api/v1/auth/change-username [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/admin/queue/stats [31m401[0m 0.02ms
+INFO  17:01:53 GET /api/v1/chat/models [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/chat/sessions [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/chat/transcriptions/test-id/sessions [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/chat/sessions/session-123 [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/chat/sessions/session-123/messages [31m401[0m 0.01ms
+INFO  17:01:53 PUT /api/v1/chat/sessions/session-123/title [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/chat/sessions/session-123/title/auto [31m401[0m 0.02ms
+INFO  17:01:53 DELETE /api/v1/chat/sessions/session-123 [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/llm/config [31m401[0m 0.02ms
+INFO  17:01:53 POST /api/v1/llm/config [31m401[0m 0.01ms
+
+2026/09/23 17:01:53 [31;1m/Users/amirkhan/sandwich/pkg/middleware/auth.go:70 [35;1mrecord not found
+[0m[33m[0.318ms] [34;1m[rows:0][0m SELECT * FROM `api_keys` WHERE key = "malformed-key-123" AND is_active = true ORDER BY `api_keys`.`id` LIMIT 1
+INFO  17:01:53 GET /api/v1/notes/note-123 [31m401[0m 0.02ms
+INFO  17:01:53 PUT /api/v1/notes/note-123 [31m401[0m 0.01ms
+INFO  17:01:53 DELETE /api/v1/notes/note-123 [31m401[0m 0.02ms
+INFO  17:01:53 GET /api/v1/profiles/ [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/profiles/ [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/profiles/123 [31m401[0m 0.01ms
+INFO  17:01:53 PUT /api/v1/profiles/123 [31m401[0m 0.01ms
+INFO  17:01:53 DELETE /api/v1/profiles/123 [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/profiles/123/set-default [31m401[0m 0.01ms
+INFO  17:01:53 GET /swagger/index.html [32m200[0m 0.02ms
+INFO  17:01:53 GET /api/v1/auth/registration-status [32m200[0m 0.15ms
+INFO  17:01:53 POST /api/v1/auth/register [31m400[0m 0.20ms
+
+2026/09/23 17:01:53 [31;1m/Users/amirkhan/sandwich/internal/repository/implementations.go:35 [35;1mrecord not found
+[0m[33m[0.260ms] [34;1m[rows:0][0m SELECT * FROM `users` WHERE username = "nonexistentuser" ORDER BY `users`.`id` LIMIT 1
+time=17:01:53 level="INFO " msg="User login failed" username=nonexistentuser reason=invalid_credentials
+INFO  17:01:53 POST /api/v1/auth/login [31m401[0m 0.36ms
+INFO  17:01:53 POST /api/v1/auth/logout [32m200[0m 0.03ms
+INFO  17:01:53 POST /api/v1/summarize/ [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/summaries/ [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/summaries/ [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/summaries/123 [31m401[0m 0.01ms
+INFO  17:01:53 PUT /api/v1/summaries/123 [31m401[0m 0.01ms
+INFO  17:01:53 DELETE /api/v1/summaries/123 [31m401[0m 0.02ms
+INFO  17:01:53 GET /api/v1/summaries/settings [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/summaries/settings [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/upload [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/youtube [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/submit [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/test-id/start [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/test-id/kill [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/test-id/transcript [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/test-id/audio [31m401[0m 0.01ms
+INFO  17:01:53 PUT /api/v1/transcription/test-id/title [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/test-id/summary [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/test-id [31m401[0m 0.01ms
+INFO  17:01:53 DELETE /api/v1/transcription/test-id [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/models [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/test-id/notes [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/test-id/notes [31m401[0m 0.01ms
+INFO  17:01:53 POST /api/v1/transcription/quick [31m401[0m 0.01ms
+INFO  17:01:53 GET /api/v1/transcription/quick/test-id [31m401[0m 0.01ms
+FAIL
+FAIL	scriberr/tests	57.198s
+FAIL

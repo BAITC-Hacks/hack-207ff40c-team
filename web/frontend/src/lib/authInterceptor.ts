@@ -1,5 +1,5 @@
 import { useAuthStore } from '../features/auth/store/authStore';
-import { refreshToken, navigateToHome, parseRequestUrl } from './authHelpers';
+import { refreshToken, logoutIfCurrent, parseRequestUrl } from './authHelpers';
 import './authTypes';
 
 export function setupAuthInterceptor(): void {
@@ -34,7 +34,11 @@ export function setupAuthInterceptor(): void {
         let response = await originalFetch(input, requestInit);
 
         if (response.status === 401 && !isAuthEndpoint) {
-            const newToken = await refreshToken();
+            const current = useAuthStore.getState();
+            // Another request may already have refreshed while this 401 was in flight.
+            const newToken = current.sessionVersion !== state.sessionVersion
+                ? current.token : await refreshToken();
+            const retryVersion = useAuthStore.getState().sessionVersion;
 
             if (newToken) {
                 const retryHeaders = new Headers(requestInit.headers);
@@ -45,8 +49,7 @@ export function setupAuthInterceptor(): void {
                 if (response.status !== 401) return response;
             }
 
-            state.logout();
-            navigateToHome();
+            logoutIfCurrent(newToken ? retryVersion : state.sessionVersion);
         }
 
         return response;

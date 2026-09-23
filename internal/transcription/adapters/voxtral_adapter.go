@@ -61,12 +61,13 @@ func NewVoxtralAdapter(envPath string) *VoxtralAdapter {
 	}
 
 	schema := []interfaces.ParameterSchema{
+		{Name: "device", Type: "string", Default: "auto", Options: []string{"auto", "cpu", "cuda"}, Description: "Explicit inference device", Group: "advanced"},
 		// Language selection
 		{
 			Name:     "language",
 			Type:     "string",
 			Required: false,
-			Default:  "en",
+			Default:  "auto",
 			Options: []string{
 				"af", "ar", "hy", "az", "be", "bs", "bg", "ca", "zh", "hr", "cs", "da", "nl",
 				"en", "et", "fi", "fr", "gl", "de", "el", "he", "hi", "hu", "is", "id", "it",
@@ -116,8 +117,8 @@ func (v *VoxtralAdapter) PrepareEnvironment(ctx context.Context) error {
 	}
 
 	// Check if environment is already ready (check both transformers AND mistral-common)
-	if CheckEnvironmentReady(v.envPath, "from transformers import VoxtralForConditionalGeneration") &&
-		CheckEnvironmentReady(v.envPath, "import mistral_common") {
+	if CheckEnvironmentReady(v.envPath, "from transformers import VoxtralForConditionalGeneration; from importlib.metadata import version; assert version('transformers') == '4.57.1'") &&
+		CheckEnvironmentReady(v.envPath, "import mistral_common; from importlib.metadata import version; assert version('mistral-common') == '1.8.1'") {
 		logger.Info("Voxtral environment already ready")
 		v.initialized = true
 		return nil
@@ -308,8 +309,9 @@ func (v *VoxtralAdapter) buildVoxtralArgs(input interfaces.AudioInput, params ma
 		args = append(args, "--language", language)
 	}
 
-	// Device auto-detection (like Parakeet/Canary) - no device parameter needed
-	// Python script will auto-detect and use GPU if available
+	if device := v.GetStringParameter(params, "device"); device != "" {
+		args = append(args, "--device", device)
+	}
 
 	// Add max tokens
 	if maxTokens := v.GetIntParameter(params, "max_new_tokens"); maxTokens > 0 {

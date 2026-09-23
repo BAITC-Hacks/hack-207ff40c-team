@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -44,70 +48,94 @@ func runWatch(cmd *cobra.Command, args []string) {
 }
 
 func watchFolder(path string) {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := watchFolderContext(ctx, path); err != nil {
+		log.Printf("Watcher stopped: %v", err)
+	}
+}
+
+func watchFolderContext(ctx context.Context, path string) error {
+	return watchFolderWithUpload(ctx, path, func(ctx context.Context, filename string) error {
+		return uploadFileContext(ctx, GetConfig(), filename, &http.Client{Timeout: uploadTimeout})
+	})
+}
+
+func watchFolderWithUpload(ctx context.Context, path string, upload func(context.Context, string) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer watcher.Close()
-
-	// Debounce map: filename -> timer
-	timers := make(map[string]*time.Timer)
-	var mu sync.Mutex
-
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
+	if err := watcher.Add(path); err != nil {
+		return err
+	}
+	// A burst cannot create unbounded upload goroutines or read files into memory.
+	pending := make(chan string, 16)
+	var workers sync.WaitGroup
+	for index := 0; index < 2; index++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for {
+				select {
+				case <-ctx.Done():
 					return
-				}
-
-				// Only care about Write and Create events
-				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-					// Check extension
-					ext := strings.ToLower(filepath.Ext(event.Name))
-					if !isAudioFile(ext) {
-						continue
+				case filename, ok := <-pending:
+					if !ok {
+						return
 					}
-
-					mu.Lock()
-					if t, exists := timers[event.Name]; exists {
-						t.Stop()
+					jobCtx, cancel := context.WithTimeout(ctx, uploadTimeout)
+					err := upload(jobCtx, filename)
+					cancel()
+					if err != nil {
+						log.Printf("Upload failed; original retained at %s: %v", filename, err)
 					}
-
-					// Set new timer for 2 seconds
-					timers[event.Name] = time.AfterFunc(2*time.Second, func() {
-						mu.Lock()
-						delete(timers, event.Name)
-						mu.Unlock()
-
-						log.Printf("Uploading %s...\n", event.Name)
-						if err := UploadFile(event.Name); err != nil {
-							log.Printf("Failed to upload %s: %v\n", event.Name, err)
-						} else {
-							log.Printf("Successfully uploaded %s\n", event.Name)
-						}
-					})
-					mu.Unlock()
 				}
-
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
+			}
+		}()
+	}
+	// Debounce within this single event loop: no per-file timer goroutines.
+	due := make(map[string]time.Time)
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+	defer func() { cancel(); close(pending); workers.Wait() }()
+	log.Printf("Watching %s for new audio files", path)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return nil
+			}
+			if event.Op&(fsnotify.Write|fsnotify.Create) != 0 && isAudioFile(strings.ToLower(filepath.Ext(event.Name))) {
+				if _, exists := due[event.Name]; exists || len(due) < 128 {
+					due[event.Name] = time.Now().Add(2 * time.Second)
+				} else {
+					log.Printf("Upload backlog full; original retained for retry: %s", event.Name)
 				}
-				log.Println("error:", err)
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return nil
+			}
+			log.Printf("Watcher error: %v", err)
+		case now := <-ticker.C:
+			for filename, deadline := range due {
+				if deadline.After(now) {
+					continue
+				}
+				select {
+				case pending <- filename:
+					delete(due, filename)
+				default:
+				}
 			}
 		}
-	}()
-
-	err = watcher.Add(path)
-	if err != nil {
-		log.Fatal(err)
 	}
-	log.Printf("Watching %s for new audio files...\n", path)
-	<-done
 }
 
 func isAudioFile(ext string) bool {

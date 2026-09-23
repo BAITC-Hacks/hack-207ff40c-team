@@ -235,7 +235,7 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
     initialParams,
     initialName = "",
     initialDescription = "",
-    isMultiTrack = false,
+    isMultiTrack = initialParams?.is_multi_track_enabled ?? false,
     title,
 }: TranscriptionConfigDialogProps) {
     const [params, setParams] = useState<WhisperXParams>(DEFAULT_PARAMS);

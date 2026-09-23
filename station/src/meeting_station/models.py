@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Manifest(BaseModel):
@@ -17,6 +17,12 @@ class Manifest(BaseModel):
     diarization: bool = False
     min_speakers: Optional[int] = Field(default=None, ge=1, le=20)
     max_speakers: Optional[int] = Field(default=None, ge=1, le=20)
+
+    @model_validator(mode='after')
+    def speaker_bounds(self):
+        if self.min_speakers is not None and self.max_speakers is not None and self.min_speakers > self.max_speakers:
+            raise ValueError('min_speakers must be <= max_speakers')
+        return self
 
 
 class RecordingStart(BaseModel):

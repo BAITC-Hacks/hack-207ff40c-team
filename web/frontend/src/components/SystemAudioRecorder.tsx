@@ -1,3 +1,4 @@
+import { downloadRecording } from '@/lib/downloadRecording';
 import { useState, useEffect, useRef } from "react";
 import {
 	MonitorSpeaker,
@@ -33,7 +34,7 @@ import { useToast } from "@/components/ui/toast";
 interface SystemAudioRecorderProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onRecordingComplete: (blob: Blob, title: string) => void;
+	onRecordingComplete: (blob: Blob, title: string) => Promise<void>;
 }
 
 export function SystemAudioRecorder({
@@ -47,16 +48,19 @@ export function SystemAudioRecorder({
 	const [title, setTitle] = useState("");
 	const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
-	const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const captureAttemptRef = useRef(0);
+	const [isStarting, setIsStarting] = useState(false);
+	const mixedStreamRef = useRef<MediaStream | null>(null);
 	const recordingChunksRef = useRef<Blob[]>([]);
 	const timerIntervalRef = useRef<number | null>(null);
 
 	// Audio Streams & Web Audio API
-	const [systemStream, setSystemStream] = useState<MediaStream | null>(null);
-	const [micStream, setMicStream] = useState<MediaStream | null>(null);
-	const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-	const [systemGainNode, setSystemGainNode] = useState<GainNode | null>(null);
-	const [micGainNode, setMicGainNode] = useState<GainNode | null>(null);
+	const systemStreamRef = useRef<MediaStream | null>(null);
+	const micStreamRef = useRef<MediaStream | null>(null);
+	const audioContextRef = useRef<AudioContext | null>(null);
+	const systemGainNodeRef = useRef<GainNode | null>(null);
+	const micGainNodeRef = useRef<GainNode | null>(null);
 
 	// Volume Controls
 	const [systemVolume, setSystemVolume] = useState(100);
@@ -205,60 +209,74 @@ export function SystemAudioRecorder({
 		};
 	}, [isRecording]);
 
-	// Create mixed audio stream using Web Audio API
-	const createMixedAudioStream = (
-		sysStream: MediaStream,
-		mStream: MediaStream,
-	): MediaStream => {
-		try {
-			// Create audio context
-			const ctx = new AudioContext();
-			setAudioContext(ctx);
+    // Register resources as soon as acquired; catch/unmount never depend on a
+    // render that happened before the browser's permission dialog completed.
+    const createMixedAudioStream = (sysStream: MediaStream, mic: MediaStream): MediaStream => {
+        const context = new AudioContext();
+        audioContextRef.current = context;
+        const systemSource = context.createMediaStreamSource(sysStream);
+        const micSource = context.createMediaStreamSource(mic);
+        const systemGain = context.createGain();
+        const micGain = context.createGain();
+        systemGain.gain.value = systemVolume / 100;
+        micGain.gain.value = micVolume / 100;
+        systemGainNodeRef.current = systemGain;
+        micGainNodeRef.current = micGain;
+        const destination = context.createMediaStreamDestination();
+        mixedStreamRef.current = destination.stream;
+        systemSource.connect(systemGain);
+        micSource.connect(micGain);
+        systemGain.connect(destination);
+        micGain.connect(destination);
+        return destination.stream;
+    };
 
-			// Create source nodes from MediaStreams
-			const systemSource = ctx.createMediaStreamSource(sysStream);
-			const micSource = ctx.createMediaStreamSource(mStream);
+    const cleanupStreams = () => {
+        for (const ref of [systemStreamRef, micStreamRef, mixedStreamRef]) {
+            ref.current?.getTracks().forEach(track => track.stop());
+            ref.current = null;
+        }
+        const context = audioContextRef.current;
+        audioContextRef.current = null;
+        if (context && context.state !== "closed") void context.close().catch(() => {});
+        systemGainNodeRef.current = null;
+        micGainNodeRef.current = null;
+        mediaRecorderRef.current = null;
+    };
 
-			// Create gain nodes for volume control
-			const systemGain = ctx.createGain();
-			const micGain = ctx.createGain();
+    const stopRecording = () => {
+        captureAttemptRef.current++;
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== 'inactive') recorder.stop();
+        cleanupStreams();
+        setIsStarting(false);
+    };
 
-			// Set initial volumes
-			systemGain.gain.value = systemVolume / 100;
-			micGain.gain.value = micVolume / 100;
-
-			// Store gain nodes for real-time control
-			setSystemGainNode(systemGain);
-			setMicGainNode(micGain);
-
-			// Create destination for mixed output
-			const destination = ctx.createMediaStreamDestination();
-
-			// Connect: sources → gains → destination
-			systemSource.connect(systemGain);
-			micSource.connect(micGain);
-			systemGain.connect(destination);
-			micGain.connect(destination);
-
-			return destination.stream;
-		} catch (error) {
-			console.error("Audio mixing failed:", error);
-			toast({
-				title: "Audio Mixing Unavailable",
-				description: "Recording system audio only. Browser doesn't support mixing.",
-			});
-			// Fallback: return system stream only
-			return sysStream;
-		}
-	};
+    useEffect(() => {
+        const attemptCounter = captureAttemptRef;
+        if (!isOpen) stopRecording();
+        return () => {
+            attemptCounter.current++;
+            const recorder = mediaRecorderRef.current;
+            if (recorder) {
+                recorder.ondataavailable = null;
+                recorder.onstop = null;
+                if (recorder.state !== 'inactive') recorder.stop();
+            }
+            cleanupStreams();
+        };
+    }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Start recording
 	const startRecording = async () => {
+        if (isStarting || mediaRecorderRef.current) return;
+        const attempt = ++captureAttemptRef.current;
+        setIsStarting(true);
 		try {
 			setPermissionDenied(false);
 
 			// Step 1: Request system audio via getDisplayMedia
-			// Note: video is required by the API, we'll stop it immediately
+			// Video is required by the capture API; only audio enters the recorder.
 			const displayStream = await navigator.mediaDevices.getDisplayMedia({
 				video: true,
 				audio: {
@@ -268,19 +286,14 @@ export function SystemAudioRecorder({
 				},
 			});
 
-			// Debug: Log what tracks we got
-			console.info("Display stream tracks:", {
-				video: displayStream.getVideoTracks().length,
-				audio: displayStream.getAudioTracks().length,
-				allTracks: displayStream.getTracks().map(t => ({ kind: t.kind, label: t.label }))
-			});
-
-			// Stop the video track immediately since we only want audio
-			const videoTrack = displayStream.getVideoTracks()[0];
-			if (videoTrack) {
-				videoTrack.stop();
-				displayStream.removeTrack(videoTrack);
-			}
+            if (attempt !== captureAttemptRef.current) {
+                displayStream.getTracks().forEach(track => track.stop());
+                return;
+            }
+            systemStreamRef.current = displayStream;
+            // Keep the browser-owned display track until capture stops. The
+            // browser's Stop Sharing control ends it even when audio is silent.
+            displayStream.getTracks().forEach(track => track.addEventListener("ended", stopRecording, { once: true }));
 
 			// Create a new MediaStream with only audio tracks
 			const audioTracks = displayStream.getAudioTracks();
@@ -297,19 +310,6 @@ export function SystemAudioRecorder({
 			}
 			const sysStream = new MediaStream(audioTracks);
 
-			setSystemStream(sysStream);
-
-			// Handle stream end (user stops sharing via browser UI)
-			sysStream.getAudioTracks()[0].addEventListener("ended", () => {
-				if (isRecording) {
-					stopRecording();
-					toast({
-						title: "Screen Sharing Stopped",
-						description: "Recording has been saved.",
-					});
-				}
-			});
-
 			// Step 2: Request microphone
 			let mStream: MediaStream | null = null;
 			try {
@@ -323,7 +323,11 @@ export function SystemAudioRecorder({
 					},
 				});
 
-				setMicStream(mStream);
+                if (attempt !== captureAttemptRef.current) {
+                    mStream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+                micStreamRef.current = mStream;
 				setMicAvailable(true);
 			} catch (micError) {
 				console.error("Microphone permission denied:", micError);
@@ -333,6 +337,8 @@ export function SystemAudioRecorder({
 				});
 				setMicAvailable(false);
 			}
+
+			if (attempt !== captureAttemptRef.current) return;
 
 			// Step 3: Mix streams or use system-only
 			let streamToRecord: MediaStream;
@@ -344,6 +350,7 @@ export function SystemAudioRecorder({
 
 			// Step 4: Create MediaRecorder directly
 			const recorder = new MediaRecorder(streamToRecord);
+            mediaRecorderRef.current = recorder;
 			recordingChunksRef.current = [];
 
 			recorder.ondataavailable = (e) => {
@@ -361,12 +368,13 @@ export function SystemAudioRecorder({
 			};
 
 			recorder.start(1000); // Capture in 1-second chunks
-			setMediaRecorder(recorder);
+
 
 			setIsRecording(true);
 			setRecordingTime(0);
 			setRecordedBlob(null);
 		} catch (error) {
+			if (attempt !== captureAttemptRef.current) return;
 			console.error("Failed to start recording:", error);
 
 			// Handle specific errors
@@ -382,23 +390,17 @@ export function SystemAudioRecorder({
 
 			// Cleanup if failed
 			cleanupStreams();
-		}
-	};
-
-	// Stop recording
-	const stopRecording = () => {
-		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-			mediaRecorder.stop();
-		}
-		cleanupStreams();
+		} finally {
+            if (attempt === captureAttemptRef.current) setIsStarting(false);
+        }
 	};
 
 	// Update system volume in real-time
 	const updateSystemVolume = (value: number[]) => {
 		const vol = value[0];
 		setSystemVolume(vol);
-		if (systemGainNode && isRecording) {
-			systemGainNode.gain.value = vol / 100;
+		if (systemGainNodeRef.current && isRecording) {
+			systemGainNodeRef.current.gain.value = vol / 100;
 		}
 	};
 
@@ -406,28 +408,9 @@ export function SystemAudioRecorder({
 	const updateMicVolume = (value: number[]) => {
 		const vol = value[0];
 		setMicVolume(vol);
-		if (micGainNode && isRecording) {
-			micGainNode.gain.value = vol / 100;
+		if (micGainNodeRef.current && isRecording) {
+			micGainNodeRef.current.gain.value = vol / 100;
 		}
-	};
-
-	// Cleanup streams and audio context
-	const cleanupStreams = () => {
-		if (systemStream) {
-			systemStream.getTracks().forEach((track) => track.stop());
-			setSystemStream(null);
-		}
-		if (micStream) {
-			micStream.getTracks().forEach((track) => track.stop());
-			setMicStream(null);
-		}
-		if (audioContext && audioContext.state !== "closed") {
-			audioContext.close();
-			setAudioContext(null);
-		}
-		setSystemGainNode(null);
-		setMicGainNode(null);
-		setMediaRecorder(null);
 	};
 
 	// Format time in mm:ss
@@ -454,7 +437,7 @@ export function SystemAudioRecorder({
 			onClose();
 		} catch (error) {
 			console.error("Failed to upload recording:", error);
-			alert("Failed to upload recording");
+			alert("Upload failed. Your recording is kept here. Retry the upload or download a local copy.");
 		} finally {
 			setIsUploading(false);
 		}
@@ -462,10 +445,13 @@ export function SystemAudioRecorder({
 
 	// Handle dialog close
 	const handleClose = () => {
-		if (isRecording) {
-			stopRecording();
-		}
-		cleanupStreams();
+		if (isUploading) return;
+		if ((isRecording || recordedBlob) && !window.confirm(isRecording
+            ? "Stop and discard the current recording? Choose Cancel, then Stop to keep and download it."
+            : "Discard this unsaved recording? Download it first if you need a local copy.")) return;
+        const recorder = mediaRecorderRef.current;
+        if (recorder) { recorder.ondataavailable = null; recorder.onstop = null; }
+		stopRecording();
 		setRecordedBlob(null);
 		setTitle("");
 		setRecordingTime(0);
@@ -611,6 +597,7 @@ export function SystemAudioRecorder({
 						</div>
 
 						{/* Upload Button */}
+						<Button variant="outline" onClick={() => recordedBlob && downloadRecording(recordedBlob, title)}>Download recording</Button>
 						<Button
 							onClick={handleUpload}
 							disabled={isUploading}
@@ -878,6 +865,7 @@ export function SystemAudioRecorder({
 					{/* Start Button */}
 					<Button
 						onClick={startRecording}
+                        disabled={isStarting}
 						size="lg"
 						className="w-full rounded-xl text-white cursor-pointer bg-gradient-to-r from-[#FFAB40] to-[#FF3D00] hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-orange-500/20"
 					>

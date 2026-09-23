@@ -70,7 +70,7 @@ def _messages(segments, manifest, previous):
         'transcript': [segment.model_dump(mode='json', exclude={'tokens'}) for segment in segments]})}]
 
 
-def _raw_schema(segments, previous):
+def _raw_schema(segments, previous, source_dates=()):
     # Ask the model only for facts. Review labels, quotations and source timestamps
     # are server-derived; optional UI defaults should not permit empty citations.
     schema = MeetingProtocol.model_json_schema()
@@ -95,12 +95,11 @@ def _raw_schema(segments, previous):
         for group in (previous.topics, previous.decisions, previous.open_questions, previous.action_items, previous.risks):
             for item in group:
                 ids.update(item.evidence.segment_ids)
-                text += ' ' + (item.evidence.quote or '')
     evidence = schema['$defs']['Evidence']
     evidence['properties'] = {'segment_ids': {'type': 'array', 'minItems': 1,
         'items': {'type': 'string', 'enum': sorted(ids)}}}
     schema['$defs']['ActionItem']['properties']['deadline_date'] = {
-        'enum': [None] + sorted(set(re.findall(r'\b\d{4}-\d{2}-\d{2}\b', text)))}
+        'enum': [None] + sorted(set(source_dates) | set(re.findall(r'\b\d{4}-\d{2}-\d{2}\b', text)))}
     def strict(node):
         if isinstance(node, dict):
             node.pop('default', None)
@@ -119,13 +118,13 @@ def _raw_schema(segments, previous):
     return schema
 
 
-def _call_chunk(segments, manifest, config, previous=None, client=None):
+def _call_chunk(segments, manifest, config, previous=None, client=None, source_dates=()):
     if client is None:
         with httpx.Client(base_url=config.ollama_url, timeout=config.ollama_timeout, trust_env=False, follow_redirects=False) as owned:
-            return _call_chunk(segments, manifest, config, previous, owned)
+            return _call_chunk(segments, manifest, config, previous, owned, source_dates)
     response = _post(client, '/api/chat', {
         'model': config.ollama_model, 'stream': False, 'think': False, 'truncate': False, 'shift': False,
-        'format': _raw_schema(segments, previous), 'keep_alive': '5m',
+        'format': _raw_schema(segments, previous, source_dates), 'keep_alive': '5m',
         'options': {'temperature': 0, 'num_ctx': config.ollama_context, 'num_predict': 4096, 'seed': 42},
         'messages': _messages(segments, manifest, previous)})
     if response.get('done') is not True or response.get('done_reason') == 'length':
@@ -150,6 +149,7 @@ def call_ollama(transcript: Transcript, manifest: JobManifest, config: Settings)
         pair[1].start if pair[1].start is not None else float(pair[0]), pair[0]))
     pending = deque(segment.model_copy(deep=True) for _, segment in ordered)
     previous = None
+    source_dates = set()
     with httpx.Client(base_url=config.ollama_url, timeout=config.ollama_timeout, trust_env=False, follow_redirects=False) as client:
         metadata = _post(client, '/api/show', {'model': config.ollama_model})
         if not metadata.get('model_info') or metadata.get('details', {}).get('format') != 'gguf':
@@ -173,6 +173,12 @@ def call_ollama(transcript: Transcript, manifest: JobManifest, config: Settings)
                         low = middle
                     else:
                         high = middle - 1
+                # A calendar date split between requests cannot be recognized
+                # from either fragment. Carry it intact into the next request.
+                for match in re.finditer(r'\b\d{4}-\d{2}-\d{2}\b', candidate.text):
+                    if match.start() < low < match.end():
+                        low = match.start()
+                        break
                 if low < 1:
                     raise RuntimeError('Accumulated protocol exceeds context; increase MI_OLLAMA_CONTEXT. Transcript remains complete')
                 batch.append(candidate.model_copy(update={'text': candidate.text[:low]}))
@@ -181,7 +187,11 @@ def call_ollama(transcript: Transcript, manifest: JobManifest, config: Settings)
                 else:
                     pending[0] = candidate.model_copy(update={'text': candidate.text[low:]})
                 break
-            previous = _call_chunk(batch, manifest, config, previous, client)
+            # Only original speech establishes a date. Model-generated fields and
+            # quotations cannot add dates, and later chunks cannot erase earlier ones.
+            for segment in batch:
+                source_dates.update(re.findall(r'\b\d{4}-\d{2}-\d{2}\b', segment.text))
+            previous = _call_chunk(batch, manifest, config, previous, client, source_dates)
         for prefix, items in (('topic', previous.topics), ('decision', previous.decisions),
                               ('question', previous.open_questions), ('action', previous.action_items), ('risk', previous.risks)):
             for index, item in enumerate(items, 1):

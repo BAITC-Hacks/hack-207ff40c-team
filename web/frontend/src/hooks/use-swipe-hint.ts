@@ -1,3 +1,4 @@
+import { localPreferences } from '@/lib/browserStorage';
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'scriberr_swipe_hint_shown';
@@ -11,14 +12,14 @@ export function useSwipeHint() {
 
     useEffect(() => {
         // Check if hint has been shown before
-        const hasShown = localStorage.getItem(STORAGE_KEY);
+        const hasShown = localPreferences.getItem(STORAGE_KEY);
         if (!hasShown) {
             setShouldShowHint(true);
         }
     }, []);
 
     const markHintShown = () => {
-        localStorage.setItem(STORAGE_KEY, 'true');
+        localPreferences.setItem(STORAGE_KEY, 'true');
         setShouldShowHint(false);
     };
 

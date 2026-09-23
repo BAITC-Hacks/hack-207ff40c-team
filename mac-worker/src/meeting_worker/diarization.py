@@ -17,6 +17,15 @@ class SpeakerTurn:
     speaker: str
 
 
+def pyannote_config(model: str) -> Path:
+    path = Path(model)
+    if path.is_dir():
+        path = next((path / name for name in ('config.yaml', 'config.yml') if (path / name).is_file()), path / 'config.yaml')
+    if not path.is_file():
+        raise RuntimeError('Pyannote requires a pre-provisioned local config.yaml or config.yml file')
+    return path.resolve()
+
+
 def diarize(audio_path: Path, transcript: Transcript, config: Settings, min_speakers=None, max_speakers=None) -> Transcript:
     if config.diarization_backend == "sherpa-onnx":
         from .asr import local_audio_settings
@@ -39,16 +48,14 @@ def diarize(audio_path: Path, transcript: Transcript, config: Settings, min_spea
         return assign_speakers(transcript, turns)
     if config.diarization_backend != "pyannote":
         raise RuntimeError("Unknown diarization backend")
-    if not Path(config.diarization_model).is_dir():
-        raise RuntimeError("Pyannote runtime requires a pre-provisioned local model directory")
+    model_config = pyannote_config(config.diarization_model)
     try:
         from pyannote.audio import Pipeline  # type: ignore
     except ImportError as exc:
         raise RuntimeError("pyannote.audio is not installed") from exc
 
     pipeline = Pipeline.from_pretrained(
-        config.diarization_model,
-        use_auth_token=config.hf_token or None,
+        str(model_config),
     )
     annotation = pipeline(str(audio_path), min_speakers=min_speakers, max_speakers=max_speakers)
     turns = [
@@ -60,6 +67,9 @@ def diarize(audio_path: Path, transcript: Transcript, config: Settings, min_spea
 
 def assign_speakers(transcript: Transcript, turns: list[SpeakerTurn]) -> Transcript:
     """Attach the speaker with the largest overlap to every ASR segment."""
+    if any(segment.text.strip() and (segment.start is None or segment.end is None)
+           for segment in transcript.segments):
+        raise RuntimeError('Diarization requires timed ASR segments; select a timestamp-capable ASR profile')
     for segment in transcript.segments:
         if segment.start is None or segment.end is None:
             continue

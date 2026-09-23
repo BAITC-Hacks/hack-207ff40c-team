@@ -134,8 +134,18 @@ class BrowserCapture:
         self.store, self.browser = store, browser
         self.lock = asyncio.Lock()
 
+    def capture_limits(self):
+        # Fake transports used in older callers have no settings; real browser
+        # clients always carry the same acceptance limits as the station.
+        settings = getattr(self.browser, 'settings', None)
+        seconds = settings.recording_seconds if settings else 14400
+        if seconds < 1:
+            raise StoreError('Recording limits do not allow one second of PCM audio', 422)
+        return {'max_seconds': seconds}
+
     async def join(self, body):
         async with self.lock:
+            limits = self.capture_limits()
             state = await self.browser.json('GET', '/v1/status')
             if state.get('active_recording_id'):
                 raise StoreError('A meeting is already joining or recording')
@@ -143,7 +153,7 @@ class BrowserCapture:
             manifest = Manifest(meeting_id=job_id, **body.model_dump(exclude={'url'})).model_dump(mode='json')
             self.store.create(job_id, manifest, 'audio', 'meeting-browser.wav', job_id + '.wav', 0, '', recording=True)
             try:
-                await self.browser.json('POST', '/v1/join', json={'url':body.url, 'id':job_id})
+                await self.browser.json('POST', '/v1/join', json={'url':body.url, 'id':job_id, **limits})
             except StoreError:
                 # A lost response may follow successful capture startup. Keep the
                 # durable import pending so the reconciler can recover its WAV.
@@ -177,6 +187,7 @@ class BrowserCapture:
 
     async def start(self, body):
         async with self.lock:
+            limits = self.capture_limits()
             state = await self.browser.json("GET", "/v1/status")
             if state.get("active_recording_id"):
                 raise StoreError("A browser recording is already active")
@@ -186,7 +197,7 @@ class BrowserCapture:
             manifest = Manifest(meeting_id=job_id, **body.model_dump()).model_dump(mode="json")
             self.store.create(job_id, manifest, "audio", "meeting-browser.wav", job_id + ".wav", 0, "", recording=True)
             try:
-                await self.browser.json("POST", "/v1/recordings/start", json={"id": job_id})
+                await self.browser.json("POST", "/v1/recordings/start", json={"id": job_id, **limits})
             except StoreError:
                 self.store.finish_recording(job_id, "Browser capture could not confirm startup. Check browser status, then retry Stop and archive if a recording exists")
                 raise

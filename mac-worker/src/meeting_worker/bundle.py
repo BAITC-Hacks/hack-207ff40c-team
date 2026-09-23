@@ -4,6 +4,16 @@ import os
 
 from .exports import export_csv, export_docx, export_ics, export_json, export_pdf
 
+# The station accepts at most 16 MiB per result, including all revision history.
+MAX_RESULT_BYTES = 16 * 1024 * 1024
+
+
+def result_bytes(result) -> bytes:
+    encoded = result.model_dump_json(indent=2).encode('utf-8')
+    if len(encoded) > MAX_RESULT_BYTES:
+        raise ValueError('Expanded report exceeds the 16 MiB result limit')
+    return encoded
+
 
 def write_exports(directory: Path, protocol, transcript, font_path=None) -> dict[str, str]:
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)

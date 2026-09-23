@@ -63,6 +63,8 @@ class Store:
                 attempts INTEGER NOT NULL DEFAULT 0, result TEXT
             );
         """)
+        if 'generation' not in {row['name'] for row in self.db.execute('PRAGMA table_info(jobs)')}:
+            self.db.execute('ALTER TABLE jobs ADD COLUMN generation INTEGER NOT NULL DEFAULT 0')
 
     @contextmanager
     def transaction(self):
@@ -122,16 +124,32 @@ class Store:
 
     def work(self):
         with self.lock:
-            row = self.db.execute("SELECT * FROM jobs WHERE available_at<=? AND (action IS NOT NULL OR stage NOT IN ('recording','completed','failed','cancelled')) ORDER BY action IS NULL,submitted DESC,rowid LIMIT 1", (time.time(),)).fetchone()
+            row = self.db.execute("SELECT * FROM jobs WHERE available_at<=? AND (action IS NOT NULL OR stage NOT IN ('recording','completed','failed','cancelled')) ORDER BY action IS NULL,available_at,rowid LIMIT 1", (time.time(),)).fetchone()
             return dict(row) if row else None
 
-    def apply_remote(self, job_id, remote, *, submitted=True, action=None, delay=2):
+    def apply_remote(self, job_id, remote, *, submitted=True, action=None, delay=2, generation=None):
         allowed = {"queued", "preprocessing", "transcribing", "diarizing", "extracting", "validating", "exporting", "completed", "failed", "cancelled"}
         if remote.get("id") != job_id or remote.get("stage") not in allowed:
             raise StoreError("Mac worker returned an invalid job state", 502)
         with self.transaction() as db:
             row = self._row(db, job_id)
             payload = json.loads(row["payload"])
+            if generation is not None and row['generation'] != generation:
+                # The user changed their intent while this request was in flight.
+                # An upload ACK still establishes existence on the worker, but
+                # an older cancel/retry/poll can never consume the newer command.
+                if submitted and not row['submitted']:
+                    payload['station']['worker_submitted'] = True
+                    pending = row['action']
+                    if payload['stage'] == 'cancelled' and remote['stage'] not in TERMINAL:
+                        pending = 'cancel'
+                    elif payload['stage'] == 'queued' and remote['stage'] in {'cancelled', 'failed'}:
+                        pending = 'retry'
+                    self._write(db, row, payload, submitted=1, action=pending, available_at=0)
+                return False
+            # A successful response clears transport errors even when an older
+            # worker omits optional null error fields from its snapshot.
+            payload.update(error_code=None, error_message=None)
             if payload["stage"] == "cancelled":
                 # A cancellation racing an upload is delivered after the upload ACK.
                 action = "cancel" if remote["stage"] not in TERMINAL else None
@@ -143,18 +161,27 @@ class Store:
                     payload["stage"] = "exporting"  # Completion follows durable local result + export files.
             payload["station"]["worker_submitted"] = bool(submitted)
             self._write(db, row, payload, submitted=int(submitted), action=action, attempts=0, available_at=time.time() + delay)
+            return True
 
-    def defer(self, job_id, message, code="ENGINE_OFFLINE"):
+    def defer(self, job_id, message, code="ENGINE_OFFLINE", *, generation=None, terminal=False):
         with self.transaction() as db:
             row = self._row(db, job_id)
+            if generation is not None and row['generation'] != generation:
+                return
             payload = json.loads(row["payload"])
             payload["error_code"], payload["error_message"] = code, message
             attempts = row["attempts"] + 1
-            self._write(db, row, payload, attempts=attempts, available_at=time.time() + min(60, 2 ** min(attempts, 6)))
+            fields = {}
+            if terminal:
+                payload['stage'] = 'failed'
+                fields['action'] = None
+            self._write(db, row, payload, attempts=attempts, available_at=time.time() + min(60, 2 ** min(attempts, 6)), **fields)
 
-    def complete(self, job_id, result):
+    def complete(self, job_id, result, *, generation=None):
         with self.transaction() as db:
             row = self._row(db, job_id)
+            if generation is not None and row['generation'] != generation:
+                return
             payload = json.loads(row["payload"])
             if payload["stage"] == "cancelled":
                 return
@@ -193,13 +220,15 @@ class Store:
                 raise StoreError("No source audio or text is available; make a new recording or upload a file")
             payload = json.loads(row["payload"])
             payload.update(stage="queued", error_code=None, error_message=None)
-            self._write(db, row, payload, action="retry" if row["submitted"] else None, attempts=0, available_at=0)
+            self._write(db, row, payload, action="retry" if row["submitted"] else None, attempts=0, available_at=0, generation=row['generation'] + 1)
         return self.get(job_id)
 
-    def remote_missing(self, job_id):
+    def remote_missing(self, job_id, *, generation=None):
         """A reset Mac can rebuild its job from the board's original durable source."""
         with self.transaction() as db:
             row = self._row(db, job_id)
+            if generation is not None and row['generation'] != generation:
+                return
             payload = json.loads(row["payload"])
             payload["station"]["worker_submitted"] = False
             if payload["stage"] != "cancelled":
@@ -216,7 +245,7 @@ class Store:
                 raise StoreError("Stop the active recording before cancelling its processing")
             payload = json.loads(row["payload"])
             payload.update(stage="cancelled", error_code=None, error_message=None)
-            self._write(db, row, payload, action="cancel" if row["submitted"] else None, available_at=0)
+            self._write(db, row, payload, action="cancel" if row["submitted"] else None, available_at=0, generation=row['generation'] + 1)
         return self.get(job_id)
 
     def finish_recording(self, job_id, error=None):

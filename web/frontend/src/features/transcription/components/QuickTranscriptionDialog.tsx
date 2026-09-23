@@ -18,7 +18,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface QuickTranscriptionJob {
   id: string;
-  status: "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed";
   transcript?: string;
   error_message?: string;
   created_at: string;
@@ -70,16 +70,46 @@ export function QuickTranscriptionDialog({ isOpen, onClose }: QuickTranscription
     }
   }, [profiles, selectedProfile]);
 
-  // Cleanup polling on unmount
   useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
+    if (!isOpen || step !== "processing" || !job?.id) return;
+    let disposed = false;
+    let failures = 0;
+    const controller = new AbortController();
+    const deadline = Date.now() + 60 * 60 * 1000;
+    const fail = (message: string) => { setError(message); setJob(null); setStep("profile"); };
+    const poll = async () => {
+      if (disposed) return;
+      try {
+        if (Date.now() >= deadline) { fail("Processing status timed out. Your source file is retained; retry when the service is ready."); return; }
+        const response = await fetch(`/api/v1/transcription/quick/${job.id}`, {
+          headers: getAuthHeaders(), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
+        });
+        if (disposed) return;
+        if (response.status === 404 || response.status === 410) {
+          fail("This quick transcription is no longer available (expired or service restarted). Select a profile and retry your file."); return;
+        }
+        if (!response.ok) throw new Error(`Status request failed (${response.status}).`);
+        const status = await response.json();
+        if (disposed) return;
+        if (!["pending", "processing", "completed", "failed"].includes(status.status)) throw new Error("Invalid transcription status.");
+        failures = 0;
+        setJob(status);
+        if (status.status === "completed" || status.status === "failed") { setStep("result"); return; }
+      } catch (cause) {
+        if (disposed) return;
+        if (++failures >= 5) {
+          fail(`${cause instanceof Error ? cause.message : "Status connection failed."} Unable to check processing after five attempts. Retry your file when the service is ready.`); return;
+        }
       }
+      if (!disposed) pollIntervalRef.current = setTimeout(() => { void poll(); }, 2000);
     };
-  }, []);
-
-
+    pollIntervalRef.current = setTimeout(() => { void poll(); }, 2000);
+    return () => {
+      disposed = true; controller.abort();
+      if (pollIntervalRef.current) clearTimeout(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    };
+  }, [isOpen, step, job?.id, getAuthHeaders]);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -106,37 +136,12 @@ export function QuickTranscriptionDialog({ isOpen, onClose }: QuickTranscription
       });
 
       setJob(jobData);
-      startPolling(jobData.id);
+
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit transcription");
       setStep("profile");
     }
-  };
-
-  const startPolling = (jobId: string) => {
-    pollIntervalRef.current = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/v1/transcription/quick/${jobId}`, {
-          headers: getAuthHeaders(),
-        });
-
-        if (response.ok) {
-          const jobData = await response.json();
-          setJob(jobData);
-
-          if (jobData.status === "completed" || jobData.status === "failed") {
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-            setStep("result");
-          }
-        }
-      } catch (err) {
-        console.error("Polling error:", err);
-      }
-    }, 2000); // Poll every 2 seconds
   };
 
   const handleClose = () => {
@@ -301,7 +306,7 @@ export function QuickTranscriptionDialog({ isOpen, onClose }: QuickTranscription
             <div className="flex flex-col items-center">
               <Clock className="h-12 w-12 text-[var(--warning-solid)] animate-spin mb-4" />
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
-                Transcribing Audio...
+                {job.status === "pending" ? "Queued for transcription…" : "Transcribing Audio..."}
               </h3>
               <p className="text-[var(--text-secondary)]">
                 This may take a few minutes depending on the audio length

@@ -8,18 +8,30 @@ import argparse
 import json
 import sys
 import os
+import math
+import tempfile
 import librosa
 import soundfile as sf
-import numpy as np
 from pathlib import Path
 import nemo.collections.asr as nemo_asr
 
 
+def positive_chunk_duration(value):
+    duration = float(value)
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("Chunk duration must be finite and positive")
+    return duration
+
+
 def split_audio_file(audio_path, chunk_duration_secs=300):
     """Split audio file into chunks of specified duration."""
+    duration = positive_chunk_duration(chunk_duration_secs)
     audio, sr = librosa.load(audio_path, sr=None, mono=True)
-    total_duration = len(audio) / sr
-    chunk_samples = int(chunk_duration_secs * sr)
+    if not math.isfinite(sr) or sr <= 0:
+        raise ValueError("Audio sample rate must be finite and positive")
+    chunk_samples = int(duration * sr)
+    if chunk_samples < 1:
+        raise ValueError("Chunk duration must contain at least one audio sample")
 
     chunks = []
     for start_sample in range(0, len(audio), chunk_samples):
@@ -43,6 +55,8 @@ def transcribe_buffered(
     """
     Transcribe long audio by splitting into chunks and merging results.
     """
+    chunks, sr = split_audio_file(audio_path, chunk_duration_secs)
+
     # Determine model path
     model_filename = "parakeet-tdt-0.6b-v3.nemo"
     model_path = None
@@ -80,56 +94,56 @@ def transcribe_buffered(
     print("✓ CUDA graphs disabled successfully")
 
     print(f"Splitting audio into {chunk_duration_secs}s chunks...")
-    chunks, sr = split_audio_file(audio_path, chunk_duration_secs)
     print(f"Created {len(chunks)} chunks")
 
     all_words = []
     all_segments = []
     full_text = []
 
-    for i, chunk_info in enumerate(chunks):
-        print(f"Transcribing chunk {i+1}/{len(chunks)} (duration: {chunk_info['duration']:.1f}s)...")
+    with tempfile.TemporaryDirectory(prefix="parakeet-") as chunk_directory:
+        for i, chunk_info in enumerate(chunks):
+            print(f"Transcribing chunk {i+1}/{len(chunks)} (duration: {chunk_info['duration']:.1f}s)...")
 
-        # Save chunk to temporary file
-        chunk_path = f"/tmp/chunk_{i}.wav"
-        sf.write(chunk_path, chunk_info['audio'], sr)
+            # Save chunk to temporary file
+            chunk_path = str(Path(chunk_directory) / f"chunk_{i}.wav")
+            sf.write(chunk_path, chunk_info['audio'], sr)
 
-        try:
-            # Transcribe chunk
-            output = asr_model.transcribe(
-                [chunk_path],
-                batch_size=1,
-                timestamps=True,
-            )
+            try:
+                # Transcribe chunk
+                output = asr_model.transcribe(
+                    [chunk_path],
+                    batch_size=1,
+                    timestamps=True,
+                )
 
-            result_data = output[0]
-            chunk_text = result_data.text
-            full_text.append(chunk_text)
+                result_data = output[0]
+                chunk_text = result_data.text
+                full_text.append(chunk_text)
 
-            # Extract and adjust timestamps
-            if hasattr(result_data, 'timestamp') and result_data.timestamp:
-                chunk_words = result_data.timestamp.get("word", [])
-                chunk_segments = result_data.timestamp.get("segment", [])
+                # Extract and adjust timestamps
+                if hasattr(result_data, 'timestamp') and result_data.timestamp:
+                    chunk_words = result_data.timestamp.get("word", [])
+                    chunk_segments = result_data.timestamp.get("segment", [])
 
-                # Adjust timestamps by chunk start time
-                for word in chunk_words:
-                    word_copy = dict(word)
-                    word_copy['start'] += chunk_info['start_time']
-                    word_copy['end'] += chunk_info['start_time']
-                    all_words.append(word_copy)
+                    # Adjust timestamps by chunk start time
+                    for word in chunk_words:
+                        word_copy = dict(word)
+                        word_copy['start'] += chunk_info['start_time']
+                        word_copy['end'] += chunk_info['start_time']
+                        all_words.append(word_copy)
 
-                for segment in chunk_segments:
-                    seg_copy = dict(segment)
-                    seg_copy['start'] += chunk_info['start_time']
-                    seg_copy['end'] += chunk_info['start_time']
-                    all_segments.append(seg_copy)
+                    for segment in chunk_segments:
+                        seg_copy = dict(segment)
+                        seg_copy['start'] += chunk_info['start_time']
+                        seg_copy['end'] += chunk_info['start_time']
+                        all_segments.append(seg_copy)
 
-            print(f"Chunk {i+1} complete: {len(chunk_text)} characters")
+                print(f"Chunk {i+1} complete: {len(chunk_text)} characters")
 
-        finally:
-            # Clean up temp file
-            if os.path.exists(chunk_path):
-                os.remove(chunk_path)
+            finally:
+                # Clean up temp file
+                if os.path.exists(chunk_path):
+                    os.remove(chunk_path)
 
     final_text = " ".join(full_text)
     print(f"Transcription complete: {len(final_text)} characters total")
@@ -161,7 +175,7 @@ def main():
     parser.add_argument("audio_file", help="Path to audio file")
     parser.add_argument("--output", "-o", help="Output file path", required=True)
     parser.add_argument(
-        "--chunk-len", type=float, default=300,
+        "--chunk-len", type=positive_chunk_duration, default=300,
         help="Chunk duration in seconds (default: 300 = 5 minutes)"
     )
 

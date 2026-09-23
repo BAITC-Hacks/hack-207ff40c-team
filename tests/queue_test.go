@@ -205,9 +205,9 @@ func (suite *QueueTestSuite) TestKillNonRunningJob() {
 
 	err := tq.KillJob("non-existent-job")
 	assert.Error(suite.T(), err)
-	// The error message depends on whether it was found in DB or not
-	// Since we didn't create it in DB, it returns "not found"
-	assert.Contains(suite.T(), err.Error(), "not found")
+	// Cancellation only controls processors owned by this queue. It must not
+	// reclassify a database row belonging to another execution as a zombie.
+	assert.Contains(suite.T(), err.Error(), "not currently running in this queue")
 }
 
 // Test queue stats

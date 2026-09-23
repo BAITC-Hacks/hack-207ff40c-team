@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,36 +32,56 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
   const [prompt, setPrompt] = useState("");
   const [includeSpeakerInfo, setIncludeSpeakerInfo] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [models, setModels] = useState<string[]>([]);
+  const formVersion = useRef(0);
+  const savingRef = useRef(false);
   const { getAuthHeaders } = useAuth();
 
   useEffect(() => {
+    formVersion.current += 1;
+    savingRef.current = false;
+    setSaving(false);
     if (open) {
+      setSaveError("");
       setName(initial?.name || "");
       setDescription(initial?.description || "");
       setModel(initial?.model || "");
       setPrompt(initial?.prompt || "");
       setIncludeSpeakerInfo(initial?.include_speaker_info || false);
-      // Load models when dialog opens
-      (async () => {
-        try {
-          const res = await fetch('/api/v1/chat/models', { headers: { ...getAuthHeaders() } });
-          if (res.ok) {
-            const data = await res.json();
-            setModels(data.models || []);
-            if (!initial?.model && (data.models || []).length) {
-              setModel(data.models[0]);
-            }
-          }
-        } catch { /* ignore */ }
-      })();
     }
-  }, [open, initial, getAuthHeaders]);
+    return () => { formVersion.current += 1; };
+  }, [open, initial]);
+
+  // Renewing authentication may refresh the choices, never the user's draft.
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch('/api/v1/chat/models', { headers: { ...getAuthHeaders() }, signal: controller.signal });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (controller.signal.aborted) return;
+        const available = Array.isArray(data.models) ? data.models.filter((value: unknown): value is string => typeof value === 'string') : [];
+        setModels(available);
+        setModel(current => current || available[0] || "");
+      } catch { /* Keep the existing model selection if refresh fails. */ }
+    })();
+    return () => controller.abort();
+  }, [open, getAuthHeaders]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!savingRef.current) onOpenChange(nextOpen);
+  };
 
   const handleSave = async () => {
-    if (!name.trim() || !prompt.trim() || !model.trim()) return;
+    if (!open || savingRef.current || !name.trim() || !prompt.trim() || !model.trim()) return;
+    const version = formVersion.current;
+    savingRef.current = true;
     try {
       setSaving(true);
+      setSaveError("");
       await onSave({
         id: initial?.id,
         name: name.trim(),
@@ -70,17 +90,28 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
         prompt: prompt.trim(),
         include_speaker_info: includeSpeakerInfo
       });
-      onOpenChange(false);
+      if (formVersion.current === version) onOpenChange(false);
+    } catch (error) {
+      if (formVersion.current === version) {
+        setSaveError(error instanceof Error ? error.message : "Template was not saved. Please retry.");
+      }
     } finally {
-      setSaving(false);
+      if (formVersion.current === version) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   };
 
   const isFormValid = name.trim() && prompt.trim() && model.trim();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        showCloseButton={!saving}
+        onEscapeKeyDown={event => { if (savingRef.current) event.preventDefault(); }}
+        onPointerDownOutside={event => { if (savingRef.current) event.preventDefault(); }}
+        aria-busy={saving}
         className="max-w-full sm:max-w-2xl w-[calc(100vw-1rem)] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl"
         style={{ boxShadow: 'var(--shadow-float)' }}
       >
@@ -95,7 +126,7 @@ export function SummaryTemplateDialog({ open, onOpenChange, onSave, initial }: S
         </DialogHeader>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+        <fieldset disabled={saving} className="flex-1 min-w-0 overflow-y-auto px-6 py-6 space-y-5">
           {/* Name Field */}
           <FormField label="Template Name" htmlFor="templateName">
             <Input
@@ -153,13 +184,15 @@ Summarize the following transcript into concise bullet points. Focus on key deci
             checked={includeSpeakerInfo}
             onCheckedChange={setIncludeSpeakerInfo}
           />
-        </div>
+        </fieldset>
 
+        {saveError && <p role="alert" className="px-6 text-[var(--error)]">{saveError}</p>}
         {/* Footer */}
         <DialogFooter className="px-6 py-4 border-t border-[var(--border-subtle)] gap-3 sm:gap-2">
           <Button
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
+            disabled={saving}
             className="rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-main)] cursor-pointer"
           >
             Cancel

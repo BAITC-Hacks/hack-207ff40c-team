@@ -208,7 +208,11 @@ final class AppModel: ObservableObject {
                 try await client.start(initial)
                 // Reconcile ACK from the server after reconnect/restart, including a rebuilt hub database.
                 let snapshot = try await client.snapshot(id)
-                try update(id) { try $0.reconcileAcknowledgment(snapshot.lastSequence, hubStatus: snapshot.status) }
+                try update(id) { meeting in
+                    if meeting.applyHubSnapshot(snapshot, allowServerChange: true) {
+                        try meeting.reconcileAcknowledgment(snapshot.lastSequence, hubStatus: snapshot.status)
+                    }
+                }
                 if let current = meetings.first(where: { $0.id == id }) {
                     let pending = Array(current.segments.filter { $0.sequence > current.ackSequence }.prefix(100))
                     if !pending.isEmpty {
@@ -221,7 +225,7 @@ final class AppModel: ObservableObject {
                     try await client.end(current)
                     try update(id) { $0.endSynced = true }
                 }
-                try apply(try await client.snapshot(id))
+                try apply(try await client.snapshot(id), allowServerChange: true)
             } catch {
                 hadSyncError = true
                 connection = "Sync paused · saved on this Mac"
@@ -237,12 +241,9 @@ final class AppModel: ObservableObject {
         if meetings.isEmpty { connection = "Ready to record locally" }
     }
 
-    private func apply(_ snapshot: HubMeeting) throws {
+    private func apply(_ snapshot: HubMeeting, allowServerChange: Bool = false) throws {
         try update(snapshot.meetingID) { meeting in
-            meeting.hubStatus = snapshot.status
-            meeting.report = snapshot.report
-            if let error = snapshot.error { meeting.error = error }
-            else if meeting.ended { meeting.error = nil }
+            meeting.applyHubSnapshot(snapshot, allowServerChange: allowServerChange)
         }
     }
 

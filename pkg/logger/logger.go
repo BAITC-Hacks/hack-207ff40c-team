@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,15 +27,18 @@ const (
 	LevelError
 )
 
-var (
-	// Default logger instance
-	defaultLogger *Logger
-	// Current log level
-	currentLevel = LevelInfo
-)
+type loggerState struct {
+	logger *Logger
+	level  LogLevel
+}
+
+var defaultLogger atomic.Pointer[loggerState]
+
+func init() { Init(os.Getenv("LOG_LEVEL")) }
 
 // Init initializes the global logger with specified level
 func Init(level string) {
+	currentLevel := LevelInfo
 	// Parse log level from environment or parameter
 	switch strings.ToLower(level) {
 	case "debug":
@@ -94,44 +98,37 @@ func Init(level string) {
 
 	// Use text handler for clean, readable output
 	handler := slog.NewTextHandler(os.Stdout, opts)
-	defaultLogger = &Logger{slog.New(handler)}
+	defaultLogger.Store(&loggerState{logger: &Logger{slog.New(handler)}, level: currentLevel})
 }
 
 // Get returns the default logger instance
-func Get() *Logger {
-	if defaultLogger == nil {
-		Init(os.Getenv("LOG_LEVEL"))
-	}
-	return defaultLogger
-}
+func Get() *Logger { return defaultLogger.Load().logger }
 
-// GetLevel returns the current log level
-func GetLevel() LogLevel {
-	return currentLevel
-}
+// GetLevel returns the current log level.
+func GetLevel() LogLevel { return defaultLogger.Load().level }
 
 // Convenience methods for common logging patterns
 
 func Debug(msg string, args ...any) {
-	if currentLevel <= LevelDebug {
+	if GetLevel() <= LevelDebug {
 		Get().Debug(msg, args...)
 	}
 }
 
 func Info(msg string, args ...any) {
-	if currentLevel <= LevelInfo {
+	if GetLevel() <= LevelInfo {
 		Get().Info(msg, args...)
 	}
 }
 
 func Warn(msg string, args ...any) {
-	if currentLevel <= LevelWarn {
+	if GetLevel() <= LevelWarn {
 		Get().Warn(msg, args...)
 	}
 }
 
 func Error(msg string, args ...any) {
-	if currentLevel <= LevelError {
+	if GetLevel() <= LevelError {
 		Get().Error(msg, args...)
 	}
 }
@@ -144,12 +141,12 @@ func WithContext(key string, value any) *Logger {
 // Startup logging for key initialization steps
 func Startup(step, message string, args ...any) {
 	// Simple message at INFO level, technical details at DEBUG
-	if currentLevel <= LevelInfo {
+	if GetLevel() <= LevelInfo {
 		// Clean, user-friendly startup message
 		// \033[36m is Cyan color for the [+] prefix
 		fmt.Printf("\033[36m[+]\033[0m %s\n", message)
 	}
-	if currentLevel <= LevelDebug {
+	if GetLevel() <= LevelDebug {
 		Debug("Startup step", append([]any{"step", step, "message", message}, args...)...)
 	}
 }
@@ -184,7 +181,7 @@ func JobFailed(jobID string, duration time.Duration, err error) {
 // HTTP request logging - filtered for INFO level
 func HTTPRequest(method, path string, status int, duration time.Duration, userAgent string) {
 	// Skip noisy endpoints at INFO level
-	if currentLevel <= LevelInfo {
+	if GetLevel() <= LevelInfo {
 		switch path {
 		case "/api/v1/transcription/list", "/health":
 			// Skip logging frequent status checks at INFO level
@@ -197,7 +194,7 @@ func HTTPRequest(method, path string, status int, duration time.Duration, userAg
 	}
 
 	// Log all requests at DEBUG level
-	if currentLevel <= LevelDebug {
+	if GetLevel() <= LevelDebug {
 		Debug("API request",
 			"method", method,
 			"path", path,
@@ -251,7 +248,7 @@ func GinLogger() gin.HandlerFunc {
 		}
 
 		// Format log message based on level
-		if currentLevel <= LevelInfo {
+		if GetLevel() <= LevelInfo {
 			// Clean format for INFO level, skip noisy endpoints
 			switch {
 			case strings.Contains(path, "/status") || strings.Contains(path, "/track-progress"):
@@ -265,7 +262,7 @@ func GinLogger() gin.HandlerFunc {
 		status := c.Writer.Status()
 		statusColor := getStatusColor(status)
 
-		if currentLevel <= LevelDebug {
+		if GetLevel() <= LevelDebug {
 			// Detailed logging for DEBUG
 			Debug("API request",
 				"method", c.Request.Method,

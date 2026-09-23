@@ -7,7 +7,8 @@ interface NoteEditorDialogProps {
     isOpen: boolean;
     quote: string;
     position: { x: number; y: number };
-    onSave: (content: string) => void;
+    onSave: (content: string) => Promise<void>;
+    onSaved: () => void;
     onCancel: () => void;
 }
 
@@ -16,20 +17,34 @@ export function NoteEditorDialog({
     quote,
     position,
     onSave,
+    onSaved,
     onCancel
 }: NoteEditorDialogProps) {
     const isMobile = useIsMobile();
     const [content, setContent] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const editorVersion = useRef(0);
+    const savingRef = useRef(false);
 
     // Focus textarea on mount and reset content
     useEffect(() => {
+        editorVersion.current += 1;
+        savingRef.current = false;
+        setSaving(false);
+        let focusTimer: ReturnType<typeof setTimeout> | undefined;
         if (isOpen) {
             setContent("");
+            setError("");
             // Delay focus to ensure element is mounted
-            setTimeout(() => textareaRef.current?.focus(), 50);
+            focusTimer = setTimeout(() => textareaRef.current?.focus(), 50);
         }
-    }, [isOpen]);
+        return () => {
+            editorVersion.current += 1;
+            clearTimeout(focusTimer);
+        };
+    }, [isOpen, quote]);
 
     if (!isOpen) return null;
 
@@ -53,10 +68,28 @@ export function NoteEditorDialog({
         zIndex: 10001
     };
 
-    const handleSubmit = () => {
-        if (content.trim()) {
-            onSave(content);
+    const handleSubmit = async () => {
+        if (!content.trim() || savingRef.current) return;
+        const version = editorVersion.current;
+        savingRef.current = true;
+        setSaving(true); setError("");
+        try {
+            await onSave(content);
+            if (editorVersion.current === version) onSaved();
+        } catch (cause) {
+            if (editorVersion.current === version) {
+                setError(cause instanceof Error ? cause.message : "Note was not saved. Please retry.");
+            }
+        } finally {
+            if (editorVersion.current === version) {
+                savingRef.current = false;
+                setSaving(false);
+            }
         }
+    };
+
+    const handleCancel = () => {
+        if (!savingRef.current) onCancel();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -68,17 +101,18 @@ export function NoteEditorDialog({
         // Close on Escape
         if (e.key === 'Escape') {
             e.preventDefault();
-            onCancel();
+            handleCancel();
         }
     };
 
     return (
         <div
             style={containerStyle}
+            onKeyDown={handleKeyDown}
             onMouseDown={(e) => {
                 // Close when clicking backdrop (mobile)
                 if (isMobile && e.target === e.currentTarget) {
-                    onCancel();
+                    handleCancel();
                 }
                 e.stopPropagation();
             }}
@@ -87,6 +121,9 @@ export function NoteEditorDialog({
             {/* The Card - Glass effect with premium shadows */}
             <div
                 className="w-full max-w-[480px] glass-card rounded-[var(--radius-card)] border border-[var(--border-subtle)] shadow-[var(--shadow-float)] overflow-hidden"
+                role="dialog"
+                aria-label="Add Note"
+                aria-busy={saving}
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -98,7 +135,8 @@ export function NoteEditorDialog({
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={onCancel}
+                        onClick={handleCancel}
+                        disabled={saving}
                         className="h-7 w-7"
                         aria-label="Close"
                     >
@@ -124,10 +162,11 @@ export function NoteEditorDialog({
                         placeholder="Write your note here..."
                         value={content}
                         onChange={e => setContent(e.target.value)}
-                        onKeyDown={handleKeyDown}
+                        disabled={saving}
                         rows={4}
                     />
 
+                    {error && <p role="alert" className="text-[var(--error)]">{error}</p>}
                     {/* Hint */}
                     <p className="text-xs text-[var(--text-tertiary)]">
                         Press <kbd className="px-1.5 py-0.5 text-[10px] bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded font-mono">⌘ Enter</kbd> to save
@@ -138,14 +177,15 @@ export function NoteEditorDialog({
                 <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-card)]">
                     <Button
                         variant="outline"
-                        onClick={onCancel}
+                        onClick={handleCancel}
+                        disabled={saving}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="brand"
                         onClick={handleSubmit}
-                        disabled={!content.trim()}
+                        disabled={!content.trim() || saving}
                     >
                         Save Note
                     </Button>
@@ -154,4 +194,3 @@ export function NoteEditorDialog({
         </div>
     );
 }
-
