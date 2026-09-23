@@ -1,0 +1,62 @@
+{
+  "data_kind": "synthetic; manually authored adversarial verifier contract cases, not model accuracy evidence",
+  "cases": [
+    {
+      "id": "ru_superseded_owner_and_date",
+      "language": "ru",
+      "segments": [
+        {"id": "later", "start": 30, "text": "Поправка: отчёт подготовит Айбек, срок переносим на 2026-09-30. Ирина больше не отвечает за отчёт."},
+        {"id": "original", "start": 0, "text": "Ирина подготовит отчёт к 2026-09-28."}
+      ],
+      "claim": {"task": "Подготовить отчёт", "assignee": "Ирина", "deadline_text": "2026-09-28", "deadline_date": "2026-09-28", "priority": "not_specified"},
+      "cited_ids": ["original"],
+      "supported": false
+    },
+    {
+      "id": "ru_date_belongs_to_other_task",
+      "language": "ru",
+      "segments": [{"id": "s1", "text": "Айбек подготовит макеты к 2026-09-28. Дана составит анкету; срок анкеты не определён."}],
+      "claim": {"task": "Составить анкету", "assignee": "Дана", "deadline_text": null, "deadline_date": "2026-09-28", "priority": "not_specified"},
+      "cited_ids": ["s1"],
+      "supported": false
+    },
+    {
+      "id": "kk_condition_dropped",
+      "language": "kk",
+      "segments": [{"id": "s1", "text": "Егер бюджет бекітілсе, Айбек жабдыққа тапсырыс береді. Бюджет әлі бекітілген жоқ."}],
+      "claim": {"task": "Жабдыққа тапсырыс беру", "assignee": "Айбек", "deadline_text": null, "deadline_date": null, "priority": "not_specified"},
+      "cited_ids": ["s1"],
+      "supported": false
+    },
+    {
+      "id": "mixed_cancelled_commitment",
+      "language": "auto",
+      "segments": [
+        {"id": "s1", "text": "Дана, жұмаға дейін отправь отчёт. Дана: келісемін."},
+        {"id": "s2", "text": "Отчёт жіберу тапсырмасы жойылды. Больше не отправляем."}
+      ],
+      "claim": {"task": "Отправить отчёт", "assignee": "Дана", "deadline_text": "жұмаға дейін", "deadline_date": null, "priority": "not_specified"},
+      "cited_ids": ["s1"],
+      "supported": false
+    },
+    {
+      "id": "ru_corrected_fields_preserved",
+      "language": "ru",
+      "segments": [
+        {"id": "s1", "text": "Ирина подготовит отчёт к 2026-09-28."},
+        {"id": "s2", "text": "Поправка: отчёт подготовит Айбек к 2026-09-30. Айбек: подтверждаю."}
+      ],
+      "claim": {"task": "Подготовить отчёт", "assignee": "Айбек", "deadline_text": "2026-09-30", "deadline_date": "2026-09-30", "priority": "not_specified"},
+      "cited_ids": ["s2"],
+      "supported": true
+    },
+    {
+      "id": "kk_condition_preserved",
+      "language": "kk",
+      "segments": [{"id": "s1", "text": "Егер бюджет бекітілсе, Айбек жабдыққа тапсырыс береді. Бюджет әлі бекітілген жоқ."}],
+      "claim": {"task": "Бюджет бекітілсе, жабдыққа тапсырыс беру", "assignee": "Айбек", "deadline_text": null, "deadline_date": null, "priority": "not_specified"},
+      "cited_ids": ["s1"],
+      "supported": true
+    }
+  ]
+}

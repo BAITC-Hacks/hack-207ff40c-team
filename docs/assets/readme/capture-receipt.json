@@ -1,0 +1,24 @@
+{
+  "captured_at_utc": "2026-09-23T10:46:08.373Z",
+  "source": "scripts/check-ui.py seed",
+  "synthetic": true,
+  "model_inference": false,
+  "api_responses_mocked": false,
+  "steps": [
+    "pair",
+    "open supplied report",
+    "open import",
+    "inspect transcript",
+    "correct owner and date",
+    "save review",
+    "reload persisted revision"
+  ],
+  "screenshots": [
+    "01-import.png",
+    "02-transcript.png",
+    "03-review.png",
+    "04-reviewed-minutes.png"
+  ],
+  "browser_errors": [],
+  "external_requests": []
+}

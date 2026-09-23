@@ -1,0 +1,101 @@
+{
+  "all_passed": true,
+  "results": [
+    {
+      "name": "harness-structure",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "scripts/harness.py",
+        "check"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.03909358300734311,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-00.log"
+    },
+    {
+      "name": "harness-regressions",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.4864017090003472,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-01.log"
+    },
+    {
+      "name": "local-frontend-build",
+      "kind": "build",
+      "argv": [
+        "env",
+        "VITE_MEETING_STATION=true",
+        "VITE_MEETING_LOCAL=true",
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "build"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.7360567080031615,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-02.log"
+    },
+    {
+      "name": "backend-and-local-http",
+      "kind": "test",
+      "argv": [
+        "env",
+        "MI_RUN_LOCAL_HTTP_TESTS=1",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "station/tests",
+        "mac-worker/tests",
+        "-q"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.102451957995072,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-03.log"
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "test",
+      "argv": [
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "lint"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.4128309170191642,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-04.log"
+    },
+    {
+      "name": "real-browser-review-and-exports",
+      "kind": "smoke",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-ui.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 6.543803624983411,
+      "log": "reports/verify-20260923T095442120502Z-b47d75-05.log"
+    }
+  ],
+  "warning": "Exit codes alone do not establish that a configured check is meaningful."
+}

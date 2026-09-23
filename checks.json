@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "commands": [
+    {
+      "name": "harness-structure",
+      "kind": "test",
+      "argv": [
+        "{python}",
+        "scripts/harness.py",
+        "check"
+      ],
+      "timeout_seconds": 30
+    },
+    {
+      "name": "harness-regressions",
+      "kind": "test",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "timeout_seconds": 60
+    },
+    {
+      "name": "local-frontend-build",
+      "kind": "build",
+      "argv": [
+        "env",
+        "VITE_MEETING_STATION=true",
+        "VITE_MEETING_LOCAL=true",
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "build"
+      ],
+      "timeout_seconds": 120
+    },
+    {
+      "name": "backend-and-local-http",
+      "kind": "test",
+      "argv": [
+        "env",
+        "MI_RUN_LOCAL_HTTP_TESTS=1",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "station/tests",
+        "mac-worker/tests",
+        "-q"
+      ],
+      "timeout_seconds": 120
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "test",
+      "argv": [
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "lint"
+      ],
+      "timeout_seconds": 120
+    },
+    {
+      "name": "real-browser-review-and-exports",
+      "kind": "smoke",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-ui.py"
+      ],
+      "timeout_seconds": 180
+    }
+  ],
+  "scope": "Core application and synthetic review acceptance. These checks do not establish ASR/diarization/model accuracy or production readiness."
+}

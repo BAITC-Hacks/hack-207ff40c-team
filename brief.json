@@ -1,0 +1,45 @@
+{
+  "event_name": null,
+  "track": "innovation",
+  "challenge_text": "Система автопротоколирования совещаний с фиксацией поручений. Владелец задачи: Самрук-Казына. По аудиозаписи совещания система делает транскрипт на русском, казахском и смешанной речи, различает говорящих, выделяет поручения с ответственным и сроком, формирует краткое саммари и экспортирует протокол в PDF/DOCX. Решение должно допускать размещение в закрытом контуре заказчика; передача аудио/текста во внешние облачные API запрещена. Участники предоставляют анонимизированные реальные или смоделированные записи. Полноценная интеграция с СЭД и промышленное развёртывание вне обязательной части.",
+  "rules_source": "Case text supplied by the user in this conversation on 2026-09-23; recorded in docs/CHALLENGE.md. User explicitly requested cloning and improving the existing solution now.",
+  "prework_policy": "unknown",
+  "hardware_policy": "unknown",
+  "required_technologies": [
+    "local/self-hosted speech recognition",
+    "Russian, Kazakh, mixed speech",
+    "speaker diarization and assignment to a person",
+    "structured actions with owner and deadline",
+    "summary",
+    "PDF/DOCX export",
+    "closed-contour deployment; no external audio/text APIs"
+  ],
+  "judging_rubric": [
+    {
+      "criterion": "Functionality and case fit",
+      "points": 25
+    },
+    {
+      "criterion": "Technical implementation",
+      "points": 25
+    },
+    {
+      "criterion": "README and reproducibility",
+      "points": 25
+    },
+    {
+      "criterion": "Value and applicability",
+      "points": 15
+    },
+    {
+      "criterion": "Originality and development potential",
+      "points": 10
+    }
+  ],
+  "team_size": null,
+  "remaining_hours": 5,
+  "compute_available": "Current Mac inspected; deployment hardware unspecified. Submission only; user says no demo.",
+  "approved_api_budget_usd": 0,
+  "data_allowed": "Participant-provided synthetic recordings allowed; real recordings must be anonymized for demonstration.",
+  "notes": "Chosen project: https://github.com/Eraly-ml/meeting-intelligence, cloned at 849f2224f93209feb9ce408f4ebd898026a9c97d. User reports this is their earlier hackathon solution. Preserve provenance; organizer reuse policy was not supplied. Scope: improve code quality, mandatory workflow and reproducibility for submission. No production-readiness or multilingual quality claim without evidence."
+}

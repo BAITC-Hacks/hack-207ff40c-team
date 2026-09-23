@@ -1,0 +1,69 @@
+{
+  "all_passed": true,
+  "results": [
+    {
+      "name": "local-frontend-build",
+      "kind": "build",
+      "argv": [
+        "env",
+        "VITE_MEETING_STATION=true",
+        "VITE_MEETING_LOCAL=true",
+        "npm",
+        "--prefix",
+        "meeting-intelligence/web/frontend",
+        "run",
+        "build"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.342229540983681,
+      "log": "reports/verify-20260923T093456358250Z-5e27cb-00.log"
+    },
+    {
+      "name": "backend-and-local-http",
+      "kind": "test",
+      "argv": [
+        "env",
+        "MI_RUN_LOCAL_HTTP_TESTS=1",
+        "meeting-intelligence/.venv/bin/python",
+        "-m",
+        "pytest",
+        "meeting-intelligence/station/tests",
+        "meeting-intelligence/mac-worker/tests",
+        "-q"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.369217291998211,
+      "log": "reports/verify-20260923T093456358250Z-5e27cb-01.log"
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "test",
+      "argv": [
+        "npm",
+        "--prefix",
+        "meeting-intelligence/web/frontend",
+        "run",
+        "lint"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.1944318749883678,
+      "log": "reports/verify-20260923T093456358250Z-5e27cb-02.log"
+    },
+    {
+      "name": "real-browser-review-and-exports",
+      "kind": "smoke",
+      "argv": [
+        "meeting-intelligence/.venv/bin/python",
+        "meeting-intelligence/scripts/check-ui.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 6.645501500024693,
+      "log": "reports/verify-20260923T093456358250Z-5e27cb-03.log"
+    }
+  ],
+  "warning": "Exit codes alone do not establish that a configured check is meaningful."
+}

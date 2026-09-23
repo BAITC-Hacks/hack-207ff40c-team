@@ -1,0 +1,13 @@
+STDOUT
+
+Running 2 tests using 1 worker
+
+  ✓  1 e2e/review.spec.ts:5:1 › secretary identifies speakers, corrects an action and downloads the saved revision (2.7s)
+  ✓  2 e2e/review.spec.ts:62:1 › secretary recovers an omitted action from an empty report with an immutable source excerpt (2.4s)
+
+  2 passed (5.5s)
+Browser review, missed-action recovery, reload, DOCX/PDF download and document contents: PASS (synthetic supplied output; no model inference).
+
+STDERR
+(node:39422) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)

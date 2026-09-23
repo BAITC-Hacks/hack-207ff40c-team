@@ -1,0 +1,166 @@
+{
+  "checked_on": "2026-09-23",
+  "scope": "Public primary sources. No claim of global obscurity, exhaustive novelty search, or successful upstream reproduction. Product concepts are proposals, not paper results.",
+  "works": [
+    {
+      "id": "nl2plan",
+      "title": "NL2Plan: Robust LLM-Driven Planning from Minimal Text Descriptions",
+      "date": "2024-05-07; revised 2025-10-01",
+      "venue": "arXiv; repository now calls the work Assistive PDDL Modeling",
+      "paper": "https://arxiv.org/html/2405.04215v2",
+      "repo": "https://github.com/mrlab-ai/NL2Plan",
+      "license_observed": "GPL-3.0",
+      "status": "adaptation candidate; original stack integration risk",
+      "mechanism": "Translate natural-language domain/problem descriptions into PDDL, then use a classical planner.",
+      "proposed_product": "A fixed-domain scheduling or resource-allocation assistant with editable constraints, a solver check, and explanations of infeasibility.",
+      "minimum_spike": "Use typed JSON for one small domain and a constraint solver; do not reproduce the entire PDDL pipeline by default.",
+      "baseline": "Human-readable greedy assignment and, if budget allows, LLM-only output validated by the same checker.",
+      "metrics": [
+        "constraint violations",
+        "feasible tasks solved",
+        "objective value on feasible tasks",
+        "latency"
+      ],
+      "caveats": [
+        "Solver guarantees only apply to the model actually encoded.",
+        "The JSON/solver version is inspired by the paper, not a reproduction.",
+        "Original repo recommends Docker/Linux/WSL and notes macOS untested. LLM access still required."
+      ],
+      "local_execution": "not run"
+    },
+    {
+      "id": "riblt",
+      "title": "Practical Rateless Set Reconciliation",
+      "date": "2024-02-05; SIGCOMM August 2024",
+      "venue": "ACM SIGCOMM 2024",
+      "paper": "https://arxiv.org/abs/2402.02668",
+      "repo": "https://github.com/yangl1996/riblt",
+      "license_observed": "MIT",
+      "status": "best non-LLM systems candidate; Go integration needed",
+      "mechanism": "Exchange coded symbols to discover the symmetric difference between two sets without first knowing its size.",
+      "proposed_product": "Offline inventory synchronization across two simulated branches over a throttled connection.",
+      "minimum_spike": "Run the author example. Synchronize immutable versioned record hashes, then fetch missing payloads and verify full-set equality.",
+      "baseline": "Full snapshot transfer plus a sorted-hash-list difference baseline; add Merkle/log-based sync before broad efficiency claims.",
+      "metrics": [
+        "total on-wire bytes including hashes and payloads",
+        "time until verified convergence",
+        "CPU time",
+        "recovery after interruption"
+      ],
+      "caveats": [
+        "Not a conflict-resolution algorithm, database, or secure transport.",
+        "Mutations/deletions need a versioning and tombstone policy.",
+        "A tiny app can have more overhead than a straightforward change log; measure crossover."
+      ],
+      "local_execution": "not run: container could not resolve github.com for git clone"
+    },
+    {
+      "id": "egwalker",
+      "title": "Collaborative Text Editing with Eg-walker: Better, Faster, Smaller",
+      "date": "2024-09-21 preprint; EuroSys March 2025",
+      "venue": "EuroSys 2025",
+      "paper": "https://arxiv.org/abs/2409.14252",
+      "repo": "https://github.com/josephg/egwalker-paper",
+      "reference_readme": "https://raw.githubusercontent.com/josephg/egwalker-paper/master/eg-walker-reference/README.md",
+      "license_observed": "TypeScript reference package.json declares BSD-2-Clause; this is not a blanket license for all repository content. Retain/check the chosen component notices.",
+      "status": "usable TypeScript reference declared BSD-2-Clause; check integration and component notices first",
+      "mechanism": "Event-graph-based collaborative text editing that targets memory/loading and divergent-branch merging weaknesses.",
+      "proposed_product": "Offline-first incident notes: two users edit disconnected copies, reconnect, and see a converged text history.",
+      "minimum_spike": "Use the TypeScript reference to test concurrent inserts/deletes on tiny traces; optimized benchmarks use a different implementation.",
+      "baseline": "Established collaborative-text library plus a clearly labeled last-write-wins failure example.",
+      "metrics": [
+        "converged text equality",
+        "retained operations",
+        "load time",
+        "merge time",
+        "memory on comparable workloads"
+      ],
+      "caveats": [
+        "Reference-code speed is not evidence for optimized-paper performance.",
+        "Convergent text can still have semantic contradictions; show them for review.",
+        "Do not run the entire paper benchmark suite during the hackathon."
+      ],
+      "local_execution": "not run"
+    },
+    {
+      "id": "bayesian-entropy",
+      "title": "Hallucination Detection on a Budget: Efficient Bayesian Estimation of Semantic Entropy",
+      "date": "2025-04-04; revised 2025-09-08",
+      "venue": "TMLR September 2025",
+      "paper": "https://arxiv.org/abs/2504.03579",
+      "repo": "https://github.com/spotify-research/bayesian-semantic-entropy",
+      "license_observed": "BSD-3-Clause-Clear",
+      "status": "laptop-friendly estimator experiments using precomputed outputs; live integration is extra work",
+      "mechanism": "Bayesian estimation of uncertainty over answer meanings, with adaptive allocation of additional answer samples.",
+      "proposed_product": "An evidence-triage interface that flags unstable answers and routes them to source review rather than asserting correctness.",
+      "minimum_spike": "Reproduce a small precomputed estimator experiment, then use a tiny labeled domain dataset for live evaluation.",
+      "baseline": "Fixed sample-count semantic entropy at matched generation budget; single-answer/no-filter baseline.",
+      "metrics": [
+        "AUROC on labeled errors",
+        "error versus coverage",
+        "samples per question",
+        "total latency and API cost"
+      ],
+      "caveats": [
+        "Consistent wrong answers can have low entropy.",
+        "Existing laptop reproduction uses precomputed responses; fresh generation can require GPU/API resources.",
+        "Inspect any pickle provenance before loading; never unpickle untrusted files.",
+        "Prior fitting, semantic clustering, and test data must remain separated."
+      ],
+      "local_execution": "not run"
+    },
+    {
+      "id": "evse",
+      "title": "Evidential Semantic Entropy for LLM Uncertainty Quantification",
+      "date": "2026-03",
+      "venue": "EACL 2026, long papers",
+      "paper": "https://aclanthology.org/2026.eacl-long.334/",
+      "repo": "https://github.com/lucieK-J/EvidentialSemanticEntropy",
+      "license_observed": "No license verified in reviewed repository root.",
+      "status": "newer specialist lead; not the default next-day code dependency",
+      "mechanism": "Represent uncertainty from both relationships among observed answer meanings and possible but unobserved meanings.",
+      "proposed_product": "A research comparison for uncertainty-aware evidence triage, not a claim to determine truth.",
+      "minimum_spike": "Read the method and check a tiny worked example; copy code only after verifying reuse permission.",
+      "baseline": "Standard semantic entropy and the Bayesian estimator on the same labeled outputs.",
+      "metrics": [
+        "AUROC on labeled errors",
+        "false-confidence rate",
+        "generation budget"
+      ],
+      "caveats": [
+        "Research code and model-generation requirements can consume the event.",
+        "No verified license means code reuse remains unresolved.",
+        "Method is not a universal hallucination detector."
+      ],
+      "local_execution": "not run"
+    },
+    {
+      "id": "conformal",
+      "title": "Conformal Risk Control; newer lead: Conformal Risk Control for Non-Monotonic Losses",
+      "date": "Original preprint 2022-08-04; ICLR 2024. Extension preprint 2026-02-23.",
+      "venue": "ICLR 2024 original; arXiv 2026 extension",
+      "paper": "https://arxiv.org/abs/2208.02814",
+      "extension_paper": "https://arxiv.org/abs/2602.20151",
+      "repo": "https://github.com/aangelopoulos/conformal-risk",
+      "license_observed": "MIT for original repository; no extension implementation verified.",
+      "status": "original method usable if labeled calibration data already exists; new extension research-only",
+      "mechanism": "Choose a prediction-set parameter using calibration data to control expected bounded monotone loss under exchangeability; newer work relaxes monotonicity via algorithm-stability conditions.",
+      "proposed_product": "A service-request router that returns a small candidate set or asks a discriminating question when ambiguity remains.",
+      "minimum_spike": "Keep training, calibration and test examples separate; calibrate the original monotone set-valued formulation.",
+      "baseline": "Uncalibrated top-1 and fixed-threshold prediction sets at comparable coverage or set size.",
+      "metrics": [
+        "held-out target loss",
+        "mean prediction-set size",
+        "clarification rate",
+        "results under labeled distribution shift"
+      ],
+      "caveats": [
+        "This is not a per-person safety probability.",
+        "Exchangeability, calibration size and loss assumptions matter.",
+        "Do not imply the old code implements the 2026 extension.",
+        "This field is established, not claimed to be globally unknown."
+      ],
+      "local_execution": "not run"
+    }
+  ]
+}
