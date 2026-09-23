@@ -1,22 +1,25 @@
-# Run Meeting Station on one computer
+# Запуск Meeting Station на одном компьютере
 
-This path runs the existing Python archive and inference worker with the React
-interface on `127.0.0.1`. It does not require Radxa, Go, Caddy, Docker, an account
-server or cloud inference. It supports uploaded recordings and pasted
-transcripts. The Radxa microphone and online-meeting browser are separate
-appliance features; their absence does not prevent file import.
+Этот вариант запускает Python-сервисы архива и вычислителя вместе с интерфейсом
+React на `127.0.0.1`. Для него не нужны Radxa, Go, Caddy, Docker, отдельный сервер
+учётных записей или облачный ИИ. Можно загружать записи и вставлять готовые
+расшифровки. Микрофон Radxa и браузер онлайн-совещаний относятся к отдельному
+аппаратному варианту.
 
-The local interface uses a generated station pairing token. API requests still
-require that token. A separate worker token stays in the Python processes. This
-mode is restricted to loopback; use [RUNBOOK.md](RUNBOOK.md) for the deployed LAN
-path and its mutual TLS configuration.
+Для доступа используется сгенерированный токен станции: API требует его и при
+локальном запуске. Отдельный токен вычислителя остаётся в серверных процессах.
+Сервисы доступны только с этого компьютера. Для размещения в локальной сети
+используйте [установку станции](STATION_SETUP.md) и взаимный TLS.
 
-## 1. Install application dependencies and build the interface
+<a id="1-install-application-dependencies-and-build-the-interface"></a>
 
-From a fresh checkout, use Python 3.11 or newer and Node 22.12 or newer. Python
-3.12 is the provisioned model environment described in the worker documentation;
-compatibility of optional native model packages must be checked for your Python
-and platform. The pinned base API/export/test environment was checked on Python 3.14.6; the model provisioning recipe uses Python 3.12 and still requires an environment-specific acceptance run.
+## 1. Установите зависимости и соберите интерфейс
+
+Из свежей копии репозитория используйте Python 3.11+ и Node 22.12+.
+Для установки моделей описан путь на Python 3.12; совместимость дополнительных
+модельных пакетов нужно проверить для вашей платформы. Базовое окружение API,
+экспорта и тестов проверено на Python 3.14.6. Установка моделей требует отдельной
+проверки полного пути на подготовленном оборудовании.
 
 ```sh
 python3 -m venv .venv
@@ -26,30 +29,34 @@ VITE_MEETING_STATION=true VITE_MEETING_LOCAL=true npm --prefix web/frontend run 
 .venv/bin/python scripts/run-local.py init
 ```
 
-Installation requires internet access; inference does not use cloud providers.
-Python packaging executes its build backends. `npm ci --ignore-scripts` uses the
-committed lockfile without dependency installation hooks. The build requires the
-platform packages from that lockfile; do not omit optional dependencies.
-`run-local.py` never installs software or downloads models. The two frontend flags
-produce build metadata that the local host checks, preventing an accidental
-upstream/account-server build from being served as the local interface.
+Установка требует интернета; обработка не использует облачные ИИ-сервисы.
+Сборка Python-пакетов выполняет их сценарии сборки. `npm ci --ignore-scripts`
+использует зафиксированные зависимости без установочных обработчиков пакетов.
+Не исключайте платформенные дополнительные зависимости, необходимые для сборки.
+`run-local.py` сам ничего не устанавливает и не загружает модели. Оба флага
+интерфейса обязательны: локальный сервер проверяет метаданные сборки.
 
-## 2. Provision inference assets
+<a id="2-provision-inference-assets"></a>
 
-Install **ffmpeg**, **whisper.cpp** with a multilingual Whisper GGML model, and
-**Ollama** with the local `qwen3.5:4b` model before using inference. Follow [MODEL_SETUP.md](MODEL_SETUP.md) for explicit provisioning commands, pinned sources and model checks. The [worker README](../mac-worker/README.md) describes the earlier hardware setup. Model files are not included in Git.
-Do not use an English-only Whisper model for Russian/Kazakh recordings.
+## 2. Подготовьте локальные модели
 
-During provisioning, a separately installed Ollama can download the configured
-model with `ollama pull qwen3.5:4b`. This is an explicit one-time download, not a
-runtime fallback. Review its model license and allow enough disk/memory for the
-speech and language models. Start Ollama in a separate terminal:
+До обработки установите **FFmpeg**, **whisper.cpp** с многоязычной моделью Whisper
+в формате GGML и **Ollama** с локальной моделью `qwen3.5:4b`.
+[Инструкция моделей](MODEL_SETUP.md) содержит команды, источники и проверки.
+[Документация вычислителя](../mac-worker/README.md) описывает прежнюю аппаратную
+установку. Весов моделей в Git нет. Английская модель не подходит для русских
+и казахских записей.
+
+На этапе подготовки загрузите модель командой `ollama pull qwen3.5:4b`.
+Это явная загрузка при установке, а не резервный способ обработки через облако.
+Проверьте лицензию и наличие места на диске и памяти для всех моделей.
+В отдельном терминале запустите Ollama:
 
 ```sh
 OLLAMA_NO_CLOUD=1 OLLAMA_HOST=127.0.0.1:11434 OLLAMA_NUM_PARALLEL=1 OLLAMA_MAX_LOADED_MODELS=1 ollama serve
 ```
 
-Edit `.local/single-machine/config.json`; all values are strings:
+Отредактируйте `.local/single-machine/config.json`. Значения должны быть строками:
 
 ```json
 {
@@ -63,94 +70,102 @@ Edit `.local/single-machine/config.json`; all values are strings:
 }
 ```
 
-Use a Unicode font containing Cyrillic and Kazakh letters. On macOS, an available
-choice is `/System/Library/Fonts/Supplemental/Arial.ttf`; check that it exists on
-your machine. The PDF renderer also checks installed fallback fonts.
+Для PDF нужен локальный шрифт с кириллицей и казахскими буквами. На macOS можно
+проверить наличие `/System/Library/Fonts/Supplemental/Arial.ttf`. Формирователь
+PDF также проверяет доступные запасные шрифты.
 
-Speaker separation is required by the current case. To enable it, install
-`.venv/bin/python -m pip install -e 'mac-worker[local]'`, set
-`MI_ENABLE_DIARIZATION` to `"true"`, and add the `MI_SEGMENTATION_MODEL` and
-`MI_EMBEDDING_MODEL` local ONNX paths documented in the worker README. Optional
-`MI_WHISPER_MODEL_EN` and `MI_WHISPER_VAD_MODEL` accept separately provisioned
-model files. Missing speaker models are reported explicitly; there is no cloud
-fallback. Diarization alone does not identify people's names.
+Разделение говорящих входит в обязательную часть кейса. Установите
+`.venv/bin/python -m pip install -e 'mac-worker[local]'`, включите
+`MI_ENABLE_DIARIZATION` значением `"true"` и укажите локальные пути
+`MI_SEGMENTATION_MODEL` и `MI_EMBEDDING_MODEL` из документации вычислителя.
+Необязательные `MI_WHISPER_MODEL_EN` и `MI_WHISPER_VAD_MODEL` принимают пути к
+отдельно подготовленным моделям. При отсутствии моделей разделения говорящих
+возвращается явная ошибка; облачной подмены нет. Разделение голосов само по себе
+не устанавливает имена людей.
 
-## 3. Check, launch and pair
+<a id="3-check-launch-and-pair"></a>
+
+## 3. Проверьте конфигурацию и запустите приложение
 
 ```sh
 .venv/bin/python scripts/run-local.py doctor
 .venv/bin/python scripts/run-local.py start
 ```
 
-Open **http://127.0.0.1:8766/meeting-intelligence**. In the pairing dialog, paste
-the `station` value from `.local/single-machine/tokens.json`. This file is ignored
-by Git and created with owner-only permissions. Do not paste the `worker` value.
-On macOS, this command copies only the station token without printing it:
+Откройте **http://127.0.0.1:8766/meeting-intelligence**. В окне сопряжения введите
+значение `station` из `.local/single-machine/tokens.json`. Этот файл исключён
+из Git и доступен только владельцу. Значение `worker` вводить не нужно.
+На macOS следующая команда копирует токен станции без вывода в терминал:
 
 ```sh
 .venv/bin/python scripts/run-local.py token | pbcopy
 ```
 
-Choose **Import**, upload an allowed recording or paste a transcript, select the
-meeting/report languages, and submit. Review the transcript, cited decisions,
-owners and deadlines before exporting the report. A service being available or a
-model file existing does not establish recognition or extraction accuracy.
+Откройте импорт, загрузите поддерживаемую запись или вставьте расшифровку,
+выберите языки совещания и отчёта, отправьте задание. Перед экспортом проверьте
+текст, источники решений, ответственных и сроки. Доступность сервиса или наличие
+файла модели не подтверждают точность распознавания.
 
-`doctor` reports missing Python packages, incorrect frontend builds, missing
-executables/model files and whether the configured model appears in the local
-Ollama inventory. It makes no inference request. The worker checks GGUF/local
-model metadata again at inference time. A passing doctor is a setup check, not a
-multilingual acceptance result.
+`doctor` сообщает об отсутствующих пакетах, неверной сборке интерфейса,
+недостающих программах и моделях, а также наличии модели в локальном Ollama.
+Он не запускает обработку. При обработке вычислитель повторно проверяет
+метаданные локальной модели GGUF. Успешная диагностика не заменяет проверку
+русской и казахской речи.
 
-If models are unavailable, `start --allow-missing-models` explicitly starts the
-real interface and archive for setup inspection. It prints the missing inference
-prerequisites; uploaded jobs may fail and no completed report is promised. The
-ordinary `start` command refuses that incomplete setup.
+Если модели пока не подготовлены, `start --allow-missing-models` явно запускает
+настоящий интерфейс и архив для проверки настройки. Команда перечисляет
+отсутствующие компоненты; обработка загруженных записей может завершиться
+ошибкой. Обычный `start` отказывается запускаться с неполной конфигурацией.
 
-Ctrl-C terminates the two child Python services and retains sources/results in
-`.local/single-machine/`. Stop separately started Ollama in its own terminal.
-Restarting uses the same tokens and archive. This launcher does not load the
-repository `.env` or reuse appliance credentials. Ports can be changed with
-`--port 8766 --worker-port 8765`; occupied ports fail without stopping the process
-that owns them. `--state-dir` selects a separate initialized archive/settings
-directory. Generated settings, recordings and tokens must never be committed.
+Ctrl-C завершает оба дочерних Python-сервиса и сохраняет источники и результаты
+в `.local/single-machine/`. Ollama, запущенный отдельно, остановите в его
+терминале. Повторный запуск использует прежние токены и архив. Локальный запуск
+не читает корневой `.env` и не использует секреты аппаратной установки.
+Порты задаются через `--port 8766 --worker-port 8765`; занятый порт вызывает
+ошибку, чужой процесс не останавливается. `--state-dir` выбирает отдельную
+инициализированную папку архива и настроек. Записи, токены и рабочую конфигурацию
+нельзя добавлять в Git.
 
-## Checks and troubleshooting
+<a id="checks-and-troubleshooting"></a>
+
+## Проверки и диагностика
 
 ```sh
 make verify
-# If shipping the retained Go/native entry points, also run:
+# Для сохранённых компонентов Go и macOS дополнительно:
 make verify-go
-make verify-native  # macOS only
+make verify-native  # Только macOS
 ```
 
-`make verify` needs the core validation environment, Node dependencies and an
-already installed Playwright Chromium. `make verify-go` needs the Go version in
-`go.mod` and its modules provisioned under `.local/go`; it builds the retained
-interface separately and runs `go test -race ./...` with downloads disabled.
-`make verify-native` compiles and tests the existing Swift application. These
-commands never install dependencies. Exact evidence and supported combinations
-are in [FOUNDATION_FIXES.md](FOUNDATION_FIXES.md).
+Для `make verify` нужны установленное проверочное окружение, зависимости Node
+и тестовый Chromium для Playwright. Для `make verify-go` нужны версия Go из
+`go.mod` и подготовленные модули: он отдельно собирает сохранённый интерфейс
+и выполняет `go test -race ./...` с отключёнными загрузками. `make verify-native`
+собирает и проверяет приложение Swift. Команды сами зависимости не устанавливают.
+Результаты и границы проверок — в [реестре исправлений](FOUNDATION_FIXES.md).
 
-Tests use synthetic fixtures/fake inference transports and do not establish real
-Russian/Kazakh accuracy. Verify an actual recording and downloaded report
-separately when local model assets are available.
+В тестах используются синтетические примеры и имитация ответов моделей.
+Они не подтверждают точность русского/казахского распознавания. После подготовки
+моделей отдельно проверьте настоящую запись и скачанный документ.
 
-After building the local frontend, an opt-in HTTP check starts the real worker
-and station on unused loopback ports, fetches the built HTML/JavaScript, checks
-authenticated API routing and missing-model status, and verifies that both child
-services stop. It uses temporary empty archives and makes no inference request:
+После сборки интерфейса дополнительная HTTP-проверка запускает настоящие сервисы
+станции и вычислителя на свободных внутренних портах, получает HTML/JavaScript,
+проверяет авторизованные запросы и сообщение об отсутствующих моделях,
+затем проверяет завершение обоих процессов. Используется временный пустой архив;
+обработки моделью нет:
 
 ```sh
 MI_RUN_LOCAL_HTTP_TESTS=1 .venv/bin/python -m pytest station/tests/test_local_http.py -q
 ```
 
-- **Account sign-in appears:** rebuild with both frontend flags, visit the
-  loopback URL and refresh. LAN origins do not activate standalone authentication.
-- **Pairing rejected:** use this launcher's station token and port. Tokens from
-  another archive are not interchangeable.
-- **Missing Ollama model:** provision it explicitly while online, then restart
-  Ollama with cloud disabled. The launcher never pulls it automatically.
-- **Missing executable/model:** configure absolute installed paths. Merely
-  installing the Python package does not install Whisper, ffmpeg or model weights.
-- **Unavailable Radxa recording/browser:** import a file on this standalone path.
+- **Появился вход в учётную запись:** пересоберите интерфейс с обоими флагами,
+  откройте адрес `127.0.0.1` и обновите страницу. Адрес локальной сети не включает
+  упрощённую авторизацию однокомпьютерного режима.
+- **Токен не принят:** используйте токен станции и порт именно этого запуска.
+  Токены другого архива не подходят.
+- **Нет модели Ollama:** загрузите её явно при доступном интернете, затем
+  запустите Ollama с отключённым облаком. Автоматической загрузки нет.
+- **Нет программы или модели:** задайте абсолютные пути к установленным файлам.
+  Python-пакет сам не устанавливает Whisper, FFmpeg или веса моделей.
+- **Недоступен микрофон Radxa или браузер совещаний:** в этом варианте
+  используйте импорт файла; функции станции требуют аппаратной установки.

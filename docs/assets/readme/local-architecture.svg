@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" fill="none" role="img" aria-labelledby="title desc">
-  <title id="title">One private network, two local devices</title>
-  <desc id="desc">The secretary's browser connects over HTTPS to a small room computer, the Radxa station. It records audio and keeps the queue and encrypted archive. A Mac on the same private network receives jobs over mutual TLS and runs Whisper, Sherpa and Qwen locally. Results return to the station for review and export. This diagram describes the configured appliance deployment.</desc>
+  <title id="title">Одна частная сеть, два локальных устройства</title>
+  <desc id="desc">Браузер секретаря соединяется по HTTPS с комнатной станцией Radxa. Она записывает звук, хранит очередь и зашифрованный архив. Mac в той же частной сети получает задания по взаимному TLS и запускает Whisper, Sherpa и Qwen локально. Результаты возвращаются для проверки и экспорта. Схема описывает настроенную аппаратную установку.</desc>
   <rect x="1" y="1" width="1198" height="468" rx="18" fill="#F7F9FA" stroke="#DCE4E9"/>
   <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif">
     <circle cx="42" cy="37" r="5" fill="#267B68"/>
-    <text x="56" y="44" font-size="17" font-weight="600" fill="#325364" letter-spacing="1.5">YOUR ORGANIZATION'S PRIVATE NETWORK</text>
+    <text x="56" y="44" font-size="17" font-weight="600" fill="#325364" letter-spacing="1.5">ЧАСТНАЯ СЕТЬ ВАШЕЙ ОРГАНИЗАЦИИ</text>
     <rect x="31" y="78" width="276" height="252" rx="14" fill="#FFF" stroke="#DCE4E9"/>
     <rect x="425" y="78" width="323" height="252" rx="14" fill="#FFF" stroke="#B4CBC8"/>
     <rect x="866" y="78" width="303" height="252" rx="14" fill="#142D45"/>
@@ -13,26 +13,26 @@
       <rect x="451" y="104" width="48" height="34" rx="6"/><path d="M457 144H493M459 129H476"/><circle cx="488" cy="121" r="3"/>
     </g>
     <g stroke="#94D9CA" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="895" y="103" width="42" height="31" rx="4"/><path d="m890 140 6-6h41l6 6z"/></g>
-    <text x="57" y="183" font-size="25" font-weight="700" fill="#142D45">Your browser</text>
-    <text x="57" y="216" font-size="19" fill="#536976">Import or record</text>
-    <text x="57" y="244" font-size="19" fill="#536976">Check the source</text>
-    <text x="57" y="272" font-size="19" fill="#536976">Review and export</text>
-    <text x="451" y="183" font-size="25" font-weight="700" fill="#142D45">Room station</text>
-    <text x="451" y="216" font-size="19" fill="#536976">Radxa · small computer</text>
-    <text x="451" y="244" font-size="19" fill="#536976">Microphone + persistent queue</text>
-    <text x="451" y="272" font-size="19" fill="#536976">Encrypted meeting archive</text>
-    <text x="892" y="183" font-size="25" font-weight="700" fill="#FFF">Inference worker</text>
-    <text x="892" y="216" font-size="19" fill="#C5D6E0">Mac · runs the AI models</text>
-    <text x="892" y="244" font-size="19" fill="#C5D6E0">Whisper → Sherpa → Qwen</text>
-    <text x="892" y="272" font-size="19" fill="#C5D6E0">Speech → speakers → draft</text>
+    <text x="57" y="183" font-size="22" font-weight="700" fill="#142D45">Ваш браузер</text>
+    <text x="57" y="216" font-size="17" fill="#536976">Загрузка или запись</text>
+    <text x="57" y="244" font-size="17" fill="#536976">Проверка источников</text>
+    <text x="57" y="272" font-size="17" fill="#536976">Правки и экспорт</text>
+    <text x="451" y="183" font-size="22" font-weight="700" fill="#142D45">Комнатная станция</text>
+    <text x="451" y="216" font-size="17" fill="#536976">Radxa · небольшой компьютер</text>
+    <text x="451" y="244" font-size="17" fill="#536976">Микрофон и очередь</text>
+    <text x="451" y="272" font-size="17" fill="#536976">Зашифрованный архив</text>
+    <text x="892" y="183" font-size="22" font-weight="700" fill="#FFF">Локальный вычислитель</text>
+    <text x="892" y="216" font-size="17" fill="#C5D6E0">Mac · запускает ИИ-модели</text>
+    <text x="892" y="244" font-size="17" fill="#C5D6E0">Whisper → Sherpa → Qwen</text>
+    <text x="892" y="272" font-size="17" fill="#C5D6E0">Речь → голоса → черновик</text>
     <g stroke="#6A8290" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M320 212H412m-8-7 8 7-8 7M761 212H853m-8-7 8 7-8 7"/></g>
     <text x="366" y="193" font-size="18" font-weight="700" fill="#267B68" text-anchor="middle">HTTPS</text>
-    <text x="807" y="184" font-size="18" font-weight="700" fill="#267B68" text-anchor="middle">Mutual</text>
+    <text x="807" y="184" font-size="18" font-weight="700" fill="#267B68" text-anchor="middle">Взаимный</text>
     <text x="807" y="204" font-size="18" font-weight="700" fill="#267B68" text-anchor="middle">TLS</text>
     <path d="M1017 332V365H168V332m-7 8 7-8 7 8" stroke="#A18A63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="343" y="348" width="510" height="34" rx="17" fill="#F7F9FA"/>
-    <text x="598" y="371" font-size="19" font-weight="600" fill="#78623D" text-anchor="middle">Transcript + draft → station → human review</text>
+    <rect x="269" y="348" width="658" height="34" rx="17" fill="#F7F9FA"/>
+    <text x="598" y="371" font-size="18" font-weight="600" fill="#78623D" text-anchor="middle">Расшифровка и черновик → станция → проверка человеком</text>
     <path d="M31 405H1169" stroke="#DCE4E9"/>
-    <text x="600" y="439" font-size="18" fill="#536976" text-anchor="middle">Installed models. Local processing. No external AI API in this pipeline.</text>
+    <text x="600" y="439" font-size="17" fill="#536976" text-anchor="middle">Модели установлены заранее. Обработка локальная. Внешние ИИ-сервисы не используются.</text>
   </g>
 </svg>

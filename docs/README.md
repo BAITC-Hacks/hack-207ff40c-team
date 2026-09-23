@@ -1,21 +1,21 @@
-# Documentation
+# Документация
 
-Start with the [repository README](../README.md). Commands run from the repository
-root, where the application and its development harness now live together.
+Начните с [README проекта](../README.md). Команды выполняются из корня репозитория,
+где находятся приложение и инструменты разработки.
 
-| You need to… | Read |
+| Задача | Материал |
 | --- | --- |
-| Understand the components, data flow and review contract | [Architecture](ARCHITECTURE.md) |
-| Launch the standalone application | [Local setup](LOCAL_SETUP.md) |
-| Set up the room station, local Mac worker and device security | [Station setup](STATION_SETUP.md), [security](SECURITY.md) |
-| Provision speech, diarization and language models | [Model setup](MODEL_SETUP.md) |
-| Check the supplied case and actual requirement coverage | [Case](CHALLENGE.md), [coverage](REQUIREMENTS.md) |
-| Inspect actual test evidence and remaining limitations | [Submission evidence](SUBMISSION_NOTES.md), [verification artifacts](verification/) |
-| Inspect original defects, implemented repairs and regression evidence | [Technical review](TECHNICAL_REVIEW.md), [foundation repairs](FOUNDATION_FIXES.md) |
-| Continue development and run checks | [Development](DEVELOPMENT.md), [handoff](HANDOFF.md) |
-| Understand reuse and the contribution | [Attribution](ATTRIBUTION.md), [decision](DECISION.md) |
-| Work on the retained appliance or native clients | [Historical component map](history/README.md) |
+| Разобраться в компонентах, движении данных и сохранении правок | [Архитектура](ARCHITECTURE.md) |
+| Запустить приложение на одном компьютере | [Локальная установка](LOCAL_SETUP.md) |
+| Подготовить комнатную станцию, Mac и защиту устройств | [Установка станции](STATION_SETUP.md), [безопасность](SECURITY.md) |
+| Установить модели речи, разделения говорящих и обработки текста | [Подготовка моделей](MODEL_SETUP.md) |
+| Сопоставить решение с кейсом | [Задача](CHALLENGE.md), [покрытие требований](REQUIREMENTS.md) |
+| Проверить результаты и ограничения | [Материалы для оценки](SUBMISSION_NOTES.md), [файлы проверок](verification/) |
+| Посмотреть исходные дефекты и подтверждения исправлений | [Технический аудит](TECHNICAL_REVIEW.md), [реестр исправлений](FOUNDATION_FIXES.md) |
+| Продолжить разработку | [Порядок работы](DEVELOPMENT.md), [передача контекста](HANDOFF.md) |
+| Уточнить происхождение кода и вклад команды | [Авторство](ATTRIBUTION.md), [выбор решения](DECISION.md) |
+| Работать с сохранёнными аппаратными и нативными компонентами | [Карта прежних компонентов](history/README.md) |
 
-Historical screenshots, hardware reports and earlier benchmark claims are not
-evidence for the current local environment. Current acceptance evidence is
-explicitly labeled as synthetic when it uses supplied transcripts or outputs.
+Исторические снимки, аппаратные отчёты и замеры не подтверждают состояние
+текущего локального окружения. Проверки с подготовленными расшифровками или
+ответами моделей явно помечены как синтетические.

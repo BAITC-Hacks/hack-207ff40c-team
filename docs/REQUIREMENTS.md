@@ -1,48 +1,51 @@
-# Coverage of the supplied Samruk-Kazyna case
+# Покрытие кейса Самрук-Казына
 
-This matrix replaces the earlier event rubric. Source and weights:
-[CHALLENGE.md](CHALLENGE.md). **Implemented is not the same as verified on real
-multilingual recordings.** Current acceptance evidence is listed in
-[SUBMISSION_NOTES.md](SUBMISSION_NOTES.md).
+Источник задачи и баллов — [официальный текст, предоставленный участником](CHALLENGE.md).
+**Наличие реализации не означает подтверждённое качество на настоящих
+многоязычных записях.** Текущие результаты перечислены в
+[материалах для оценки](SUBMISSION_NOTES.md).
 
-| Requirement | Implementation | Evidence / remaining boundary |
+| Требование | Реализация | Подтверждение и оставшаяся проверка |
 | --- | --- | --- |
-| Russian speech recognition | Local multilingual Whisper adapter and explicit `ru` mode | Adapter contracts tested; current audio accuracy unmeasured |
-| Kazakh speech recognition | Same adapter, `kk` mode, Unicode throughout | Current Kazakh recordings not run |
-| Mixed RU/KZ speech | `kk_ru` uses multilingual recognition with automatic language detection | Code-switching quality unmeasured; no guarantee from a language selector |
-| Speaker separation | Local Sherpa ONNX segmentation and embedding, bounded turn alignment | Synthetic turn/overlap tests; real diarization quality unmeasured; local assets required |
-| Assignments tied to people | Extracted owner plus evidence/voice ID; secretary can name voices and confirm/correct owner | Real browser and API correction tests; names are human mappings, not voice biometrics |
-| Tasks, owners, deadlines | Local structured extraction, same-task deadline checks, full chronology in verifier; secretary can add a missed task from immutable source passages | Frozen adversarial transport fixtures and real browser recovery from an empty extraction; model judgment accuracy still requires evaluation |
-| Summary | Derived from reviewed/source-supported findings; refreshed after edits | Tests reject stale/rejected facts in summary; completeness is not guaranteed |
-| PDF/DOCX export | Both, plus CSV/JSON/ICS, Unicode and source/review labels | Actual browser downloads and independent document-content checks passed |
-| Audio/video file input | MP3/WAV/M4A/WebM/CAF/OGG/FLAC/MP4/MKV, local ffmpeg audio extraction | Upload contracts tested; this environment did not execute ffmpeg codecs |
-| Teams/Zoom/Meet participant | Existing separate appliance browser/controller, host admission limits | Controller tests retained; live meeting joins not revalidated in this workspace |
-| Privacy / local deployment | Loopback-only standalone host, distinct tokens; mutual TLS for LAN worker; no cloud inference fallback | Authorization, TLS and routing tests; browser path checked; full WAN-disconnect inference untested |
-| Participant notice | Recording/import UI instructions; appliance joins visibly as recording participant | Human organizer must notify participants; no claim of automatic consent enforcement |
-| Upcoming/overdue reminders | ICS task export only | Automatic scheduled notifications are not implemented; ICS is not claimed to send reminders |
-| Task status dashboard / SED / voice biometrics | Outside current improvements | Not represented as completed features |
+| Русская речь | Локальный многоязычный Whisper, явный режим `ru` | Проверены контракты адаптера; качество на текущем наборе аудио не измерено. |
+| Казахская речь | Тот же адаптер, режим `kk`, поддержка Unicode в данных и документах | Нужны результаты на отложенных казахских записях. |
+| Смешанная речь | Режим `kk_ru` использует автоматическое определение языка | Нужны записи с реальным переключением языков внутри встречи. |
+| Разделение говорящих и привязка к людям | Локальный Sherpa; секретарь сопоставляет метки голосов с именами и уточняет ответственного | Настоящие браузерные и API-проверки исправлений; имена вводит человек, это не голосовая биометрия. |
+| Поручения, ответственные и сроки | Локальное структурированное извлечение, проверка сроков одного поручения и хронологии; восстановление пропущенного поручения по исходным репликам | Проверены сложные подготовленные ответы и восстановление через браузер; точность суждений модели требует отдельной оценки. |
+| Краткое содержание | Собирается из проверенных фактов с источниками и обновляется после правок | Тесты проверяют исключение устаревших/отклонённых фактов; полнота не гарантируется. |
+| PDF или DOCX | Оба формата, а также CSV/JSON/ICS; Unicode, ссылки на источники и отметки проверки | Пройдены скачивание через браузер и независимая проверка содержимого документов. |
+| Аудио/видеофайл | MP3/WAV/M4A/WebM/CAF/OGG/FLAC/MP4/MKV, локальное выделение аудио через FFmpeg | Контракты загрузки проверены; работа кодеков в текущем окружении не проверялась. |
+| Участие в Teams/Zoom/Meet | Отдельный браузер и контроллер аппаратной станции; доступ зависит от организатора | Сохранены проверки контроллера; реальные подключения в этом окружении не повторялись. |
+| Приватность и локальная установка | На одном компьютере — доступ только изнутри, отдельные токены; для сетевого вычислителя — взаимный TLS; облачной обработки нет | Проверены авторизация, TLS, маршрутизация и браузерный путь; обработка с физически отключённым интернетом ещё не проверена. |
+| Уведомление участников | Инструкции в интерфейсе записи/импорта; станция видна участникам онлайн-встречи | Организатор должен уведомить участников; автоматическое получение согласий не заявляется. |
+| Напоминания о приближении/нарушении срока | Только экспорт календарных задач ICS | Автоматическая рассылка не реализована; файл ICS сам уведомления не отправляет. |
+| Статусы поручений, СЭД, голосовая биометрия | Вне текущего набора улучшений | Не представлены как готовые функции. |
 
-## Judging priorities
+<a id="judging-priorities"></a>
 
-- Functionality and case fit: 25 points. Main path is import → local processing →
-  source review → corrected minutes and exports; model acceptance remains open.
-- Technical implementation: 25. Existing local inference architecture, strict
-  provenance separation, durable revision publication and recovery.
-- README and reproducibility: 25. One-machine launch, pinned core packages,
-  model-provisioning sources, executable checks and visible incomplete setup.
-- Value and applicability: 15. Secretary can resolve ambiguous owners/deadlines
-  and distribute a consistent reviewed version. No measured labor-saving claim.
-- Development potential/originality: 10. Contribution is the source-linked,
-  correctable task workflow under local-data constraints. Existing algorithms and
-  earlier application are attributed; global novelty is not claimed.
+## Критерии оценки
 
-## Required next acceptance on provisioned hardware
+| Критерий | Баллы | На чём сосредоточено решение |
+| --- | ---: | --- |
+| Соответствие задаче и работоспособность | 25 | Импорт → локальная обработка → проверка источников → исправленный протокол и экспорт. Оценка качества моделей остаётся открытой. |
+| Техническая реализация | 25 | Разделение станции и вычислителя, сохранение источников, согласованные версии документов и восстановление после сбоев. |
+| README и воспроизводимость | 25 | Запуск на одном компьютере, зафиксированные основные зависимости, инструкции моделей, команды проверок и явные ошибки неполной установки. |
+| Ценность и применимость | 15 | Секретарь может уточнить ответственного и срок и передать согласованную версию. Экономия рабочего времени пока не измерялась. |
+| Потенциал развития и оригинальность | 10 | Проверяемые и исправляемые поручения в локальном контуре. Прежнее приложение и используемые алгоритмы атрибутированы; мировая новизна не заявляется. |
+| **Всего** | **100** | |
 
-Use fixed consented/synthetic multi-speaker Russian, Kazakh and mixed recordings
-with a human transcript, speaker roster and expected tasks. Include corrected
-owners/dates, unassigned tasks, overlapping voices, conditional/cancelled tasks
-and no-task meetings. Report WER per language, diarization errors and owner/date
-precision/recall with failures retained. Inspect downloaded PDF/DOCX. Repeat with
-external networking disconnected and record actual model hashes, memory and
-runtime. The present synthetic browser/transport checks cannot establish these
-results or production readiness.
+<a id="required-next-acceptance-on-provisioned-hardware"></a>
+
+## Следующая проверка на подготовленном оборудовании
+
+Нужен фиксированный набор согласованных или синтетических записей на русском,
+казахском и смешанном языке с несколькими говорящими. Для каждой подготовьте
+проверенную человеком расшифровку, список участников и ожидаемые поручения.
+Включите смену ответственного и срока, поручение без ответственного,
+одновременную речь, условные и отменённые поручения, встречу без поручений.
+
+Отдельно измерьте ошибки распознавания по языкам, ошибки разделения говорящих,
+точность и полноту определения ответственных и сроков; не исключайте неудачные
+запуски. Проверьте PDF/DOCX. Повторите обработку с отключённым внешним интернетом
+и сохраните хеши моделей, расход памяти и время. Нынешние синтетические проверки
+не устанавливают эти результаты или промышленную готовность.

@@ -1,46 +1,46 @@
-# Set up the room station and local worker
+# Установка комнатной станции и локального вычислителя
 
-This deployment uses a small Radxa computer for recording, the web interface and
-the archive, with a Mac on the same private network for inference. For evaluation
-on one computer, use [LOCAL_SETUP.md](LOCAL_SETUP.md) instead.
+В этом варианте небольшой компьютер Radxa отвечает за запись, веб-интерфейс и
+архив. Mac в той же частной сети запускает ИИ-модели. Для знакомства с приложением
+на одном компьютере используйте [инструкцию локального запуска](LOCAL_SETUP.md).
 
-The [September 11 runbook](RUNBOOK.md) records the original installation. Its LAN
-addresses and private paths are examples from that installation, not credentials
-or a ready-made configuration for a new board. This repository includes source
-and deployment scripts; it does not include model files or a flashable disk image.
+[Руководство от 11 сентября](RUNBOOK.md) описывает прежнюю аппаратную установку.
+Его сетевые адреса и приватные пути относятся к той установке: это не готовая
+конфигурация для новой платы. Репозиторий содержит исходники и сценарии
+развёртывания; модели и готовый образ диска в него не входят.
 
-## 1. Prepare the equipment and downloads
+## 1. Подготовьте оборудование и зависимости
 
-The documented hardware is a Radxa Cubie A7A with 6 GB RAM and Debian 11, plus a
-MacBook Air M5 with 16 GB memory. Connect the microphone to the station. Reserve
-both devices' private LAN addresses so certificates continue to match them.
+Описанная установка использует Radxa Cubie A7A с 6 ГБ ОЗУ и Debian 11, а также
+MacBook Air M5 с 16 ГБ памяти. Подключите микрофон к станции. Закрепите локальные
+адреса обоих устройств, чтобы они продолжали соответствовать сертификатам.
 
-Prepare Git, Node.js 22.12+/npm and the Go toolchain declared in `go.mod` for the
-application build. The Mac worker requires Python 3.11+; the model provisioning
-recipe uses Python 3.12. The station package supports Python 3.9+ on the board.
-The appliance also needs Caddy, FFmpeg/recording tools, gocryptfs and the service
-dependencies listed in the [runbook](RUNBOOK.md#board-installation-and-configuration).
+Для сборки нужны Git, Node.js 22.12+/npm и версия Go из `go.mod`. Вычислителю на
+Mac нужен Python 3.11+; для установки моделей описан путь на Python 3.12. Пакет
+станции на плате поддерживает Python 3.9+. Аппаратной установке также нужны
+Caddy, средства записи и обработки аудио, gocryptfs и зависимости сервисов из
+[руководства эксплуатации](RUNBOOK.md#board-installation-and-configuration).
 
-Follow [MODEL_SETUP.md](MODEL_SETUP.md) to provision FFmpeg, whisper.cpp, a
-multilingual Whisper model, Sherpa's segmentation/embedding models and Ollama
-with Qwen3.5 4B. Complete downloads during setup and retain component licenses.
-Do not substitute an English-only speech model for the required languages.
+По [инструкции моделей](MODEL_SETUP.md) подготовьте FFmpeg, whisper.cpp,
+многоязычную модель Whisper, модели сегментации и голосовых признаков Sherpa,
+а также Ollama с Qwen3.5 4B. Загрузки выполняются при установке. Сохраните
+лицензии компонентов; модель только для английского не подходит для кейса.
 
-## 2. Build the station application
+## 2. Соберите приложение станции
 
-From the repository root:
+Из корня репозитория:
 
 ```sh
 bash scripts/build-station.sh
 ```
 
-The script installs the locked frontend dependencies with `npm ci`, builds with
-`VITE_MEETING_STATION=true`, embeds the interface in Go and produces
-`build/scriberr-linux-arm64`. The binary keeps its inherited deployment filename.
-Set `MI_STATION_MODE=true` in the board's Go service configuration; both flags are
-required. This build does not install models, certificates or system services.
+Сценарий устанавливает зависимости интерфейса через `npm ci`, собирает его с
+`VITE_MEETING_STATION=true`, встраивает в Go-приложение и создаёт
+`build/scriberr-linux-arm64`. Имя бинарного файла сохранено для совместимости.
+В конфигурации Go-сервиса на плате задайте `MI_STATION_MODE=true`: нужны оба флага.
+Сборка не устанавливает модели, сертификаты или системные службы.
 
-## 3. Configure the Mac worker
+## 3. Настройте вычислитель на Mac
 
 ```sh
 python3.12 -m venv .venv-worker
@@ -50,79 +50,88 @@ if [ ! -e .env ]; then
 fi
 ```
 
-Review `.env`, including any existing file. Replace the example token with a
-fresh random secret, set the local executable/model paths and configure the
-private LAN bind address. Keep these files outside Git. Set
-`MI_ENABLE_DIARIZATION=true` and both ONNX model paths, and request speaker
-separation when submitting audio. Configure a local Unicode PDF font with Kazakh
-and Cyrillic glyphs. See the [worker configuration](../mac-worker/.env.example).
+Проверьте `.env`, в том числе если он уже существовал. Замените пример токена
+новым случайным секретом, укажите локальные пути к программам и моделям, задайте
+приватный адрес прослушивания в локальной сети. Не добавляйте секреты в Git.
+Включите `MI_ENABLE_DIARIZATION=true` и укажите пути к обеим ONNX-моделям.
+При отправке записи также выбирайте разделение говорящих. Для PDF настройте
+локальный шрифт с казахскими буквами и кириллицей.
+[Параметры вычислителя](../mac-worker/.env.example).
 
-Provision the device identities with [create-worker-pki.py](../scripts/create-worker-pki.py)
-and the [security guide](SECURITY.md). The LAN worker requires its server
-certificate, private key and trusted client CA. The station receives its own
-client certificate/key and the public CA; the CA private key stays off the board.
-Use a fresh output directory and the actual worker IP. Keep verification enabled.
+Подготовьте удостоверения устройств с помощью
+[create-worker-pki.py](../scripts/create-worker-pki.py) и
+[руководства безопасности](SECURITY.md). Вычислителю нужны серверный сертификат,
+закрытый ключ и доверенный центр клиентских сертификатов. На станцию передаются
+её клиентский сертификат и ключ, а также публичный сертификат центра.
+Закрытый ключ центра сертификации остаётся вне платы. Используйте новую выходную
+папку и фактический IP вычислителя. Не отключайте проверку сертификатов.
 
-Start separately installed Ollama in one terminal:
+В отдельном терминале запустите заранее установленный Ollama:
 
 ```sh
-OLLAMA_NO_CLOUD=1 \
-OLLAMA_HOST=127.0.0.1:11434 \
-OLLAMA_NUM_PARALLEL=1 \
-OLLAMA_MAX_LOADED_MODELS=1 ollama serve
+OLLAMA_NO_CLOUD=1 OLLAMA_HOST=127.0.0.1:11434 OLLAMA_NUM_PARALLEL=1 OLLAMA_MAX_LOADED_MODELS=1 ollama serve
 ```
 
-After models and credentials have been provisioned, start the worker separately:
+После подготовки моделей и сертификатов отдельно запустите вычислитель:
 
 ```sh
 .venv-worker/bin/meeting-worker
 ```
 
-An existing LaunchAgent may already own the service port. Use either the installed
-service or the foreground command. The [runbook](RUNBOOK.md#mac-inference-service)
-also describes the original Mac's additional process network restrictions; a
-manual worker launch does not install that policy.
+Если порт уже занят установленной службой LaunchAgent, не запускайте второй
+экземпляр. В [руководстве](RUNBOOK.md#mac-inference-service) описана дополнительная
+сетевая изоляция процессов прежней установки. Обычный ручной запуск сам её
+не применяет.
 
-## 4. Install and protect the station
+## 4. Установите и защитите станцию
 
-Follow the [board installation procedure](RUNBOOK.md#board-installation-and-configuration)
-to stage the binary, station package, Python environment and service definitions.
-Configure the station's worker address, separate pairing/worker tokens and client
-TLS identity. The Go and Python services bind to board loopback behind Caddy.
+Следуйте [порядку установки на плату](RUNBOOK.md#board-installation-and-configuration):
+подготовьте бинарный файл, пакет станции, Python-окружение и определения служб.
+Задайте адрес вычислителя, отдельные токены станции и вычислителя, а также
+клиентский TLS-сертификат. Go- и Python-сервисы слушают только внутренние адреса
+платы; внешний доступ к ним проходит через Caddy.
 
-Configure Caddy's HTTPS address and trusted public browser CA, then provision the
-encrypted archive and startup guards using the [security and recovery guide](SECURITY.md).
-An ordinary application install does not create that encrypted vault. Keep the
-vault unlock credential and recovery copy on protected separate storage; the
-documented deployment uses FileVault on the Mac and pinned SSH to unlock the board.
-The private installation credentials and migration backups are not in this repo.
+Настройте HTTPS-адрес Caddy и доверие к публичному сертификату центра для браузера.
+По [руководству безопасности](SECURITY.md) настройте зашифрованное хранилище и
+защиту запуска сервисов. Обычная установка приложения сама такого хранилища
+не создаёт. Секрет разблокировки и резервную копию храните отдельно и защищённо.
+В описанной установке для этого используются FileVault на Mac и SSH с проверкой
+ключа станции. Приватных ключей и резервных копий прежней установки в Git нет.
 
-Open the configured station HTTPS address, sign in and enter the station pairing
-token. Other browsers must trust the public station CA through a trusted channel.
-Keep the Mac logged in and awake for processing and automatic unlock after reboot.
-Renew device certificates before their 90-day expiry; changing the worker's IP
-requires a matching certificate and station configuration.
+Откройте настроенный HTTPS-адрес станции, войдите в систему и введите токен
+сопряжения станции. Остальным браузерам потребуется доверие к публичному
+сертификату центра, полученному по доверенному каналу. Для обработки и
+автоматического открытия архива после перезагрузки Mac должен быть включён,
+доступен по сети и разблокирован после входа в систему.
 
-## 5. Check the complete installation
+Обновляйте сертификаты устройств до истечения 90 дней. При изменении IP
+вычислителя нужны новый соответствующий сертификат и настройка станции.
 
-1. Import non-sensitive Russian, Kazakh and mixed-language recordings with known
-   transcripts and expected assignments. Enable speaker separation.
-2. Open an assignment's source passage, listen to it, correct the owner/date and
-   save a review. Reload the page and inspect the downloaded PDF and DOCX,
-   including Kazakh/Cyrillic characters.
-3. Disconnect internet access while keeping the private LAN available. Repeat an
-   upload with installed models and record the outcome.
-4. Stop the worker while the unlocked station remains running. Check that a new
-   recording queues and existing reports remain accessible. Restart the worker;
-   confirm the job completes once and the source is retained.
-5. Check certificate rejection, vault lock/unlock and reboot recovery against
-   [SECURITY.md](SECURITY.md). Preserve a recoverable encrypted backup first.
+## 5. Проверьте полный путь
 
-These are acceptance steps for a new installation. The earlier hardware log and
-current synthetic regression checks do not establish that this new setup passed.
-Use [ACCURACY.md](ACCURACY.md) for recognition measurements and count missing or
-invented tasks, wrong owners and wrong deadlines separately.
+1. Добавьте записи без чувствительных данных на русском, казахском и смешанном
+   языке. Подготовьте эталонную расшифровку и ожидаемые поручения. Включите
+   разделение говорящих.
+2. Откройте исходную реплику у поручения, прослушайте её, исправьте ответственного
+   и срок, сохраните проверку. Перезагрузите страницу и проверьте скачанные
+   PDF/DOCX, включая отображение казахских букв и кириллицы.
+3. Отключите интернет, сохранив локальную сеть. Повторите загрузку и обработку
+   заранее установленными моделями. Зафиксируйте результат.
+4. Остановите вычислитель при работающей разблокированной станции. Убедитесь,
+   что новая запись попадает в очередь, а прежние отчёты доступны. После запуска
+   вычислителя проверьте однократное выполнение задания и сохранность источника.
+5. Проверьте отклонение неверных сертификатов, блокировку хранилища и
+   восстановление после перезагрузки по [руководству безопасности](SECURITY.md).
+   До этого сохраните пригодную для восстановления зашифрованную копию.
 
-For application regressions, follow [the verification instructions](LOCAL_SETUP.md#checks-and-troubleshooting).
-`make verify` runs the configured checks once their pinned dependencies and test
-browser are installed; `make verify-go` additionally checks the retained Go path.
+Это проверки для новой установки, а не утверждение, что они уже пройдены на
+вашем оборудовании. Прежние аппаратные измерения и текущие синтетические тесты
+не заменяют такую проверку. Для оценки распознавания используйте
+[методику](ACCURACY.md); отдельно считайте пропущенные и выдуманные поручения,
+неверных ответственных и ошибочные сроки.
+
+Автоматические проверки описаны в
+[инструкции запуска](LOCAL_SETUP.md#checks-and-troubleshooting).
+`make verify` запускает настроенные проверки с уже установленными зависимостями
+и тестовым браузером. `make verify-go` дополнительно проверяет сохранённую часть
+на Go.
