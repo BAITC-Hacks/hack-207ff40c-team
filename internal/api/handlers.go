@@ -2,11 +2,14 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -352,18 +355,13 @@ func (h *Handler) UploadAudio(c *gin.Context) {
 
 			// If we found a profile, update the job and queue it
 			if profile != nil {
-				job.Parameters = profile.Parameters
-				job.Diarization = profile.Parameters.Diarize
-				job.Status = models.StatusPending
-
-				// Update the job in database
-				if err := h.jobRepo.Update(c.Request.Context(), &job); err == nil {
-					// Enqueue the job for transcription
-					if err := h.taskQueue.EnqueueJob(jobID); err != nil {
-						// If enqueueing fails, revert status but don't fail the upload
-						job.Status = models.StatusUploaded
-						_ = h.jobRepo.Update(c.Request.Context(), &job)
-					}
+				candidate := job
+				candidate.Parameters = profile.Parameters
+				candidate.Diarization = profile.Parameters.Diarize
+				if err := h.enqueueTranscription(c.Request.Context(), &candidate); err != nil {
+					logger.Warn("Uploaded audio retained without automatic inference", "job_id", jobID, "error", err)
+				} else {
+					job = candidate
 				}
 			}
 		}
@@ -456,14 +454,13 @@ func (h *Handler) UploadVideo(c *gin.Context) {
 			}
 
 			if profile != nil {
-				job.Parameters = profile.Parameters
-				job.Diarization = profile.Parameters.Diarize
-				job.Status = models.StatusPending
-				if err := h.jobRepo.Update(c.Request.Context(), &job); err == nil {
-					if err := h.taskQueue.EnqueueJob(jobID); err != nil {
-						job.Status = models.StatusUploaded
-						_ = h.jobRepo.Update(c.Request.Context(), &job)
-					}
+				candidate := job
+				candidate.Parameters = profile.Parameters
+				candidate.Diarization = profile.Parameters.Diarize
+				if err := h.enqueueTranscription(c.Request.Context(), &candidate); err != nil {
+					logger.Warn("Uploaded audio retained without automatic inference", "job_id", jobID, "error", err)
+				} else {
+					job = candidate
 				}
 			}
 		}
@@ -534,10 +531,11 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 
 	// Create job record
 	job := models.TranscriptionJob{
-		ID:              jobID,
-		Status:          models.StatusUploaded,
-		IsMultiTrack:    true,
-		MultiTrackFiles: trackFiles,
+		ID:               jobID,
+		Status:           models.StatusUploaded,
+		IsMultiTrack:     true,
+		MultiTrackFolder: &jobDir,
+		MultiTrackFiles:  trackFiles,
 	}
 
 	if title := c.PostForm(paramTitle); title != "" {
@@ -553,6 +551,7 @@ func (h *Handler) UploadMultiTrack(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job"})
 		return
 	}
+	c.JSON(http.StatusOK, job)
 }
 
 // @Summary Get multi-track merge status
@@ -773,7 +772,7 @@ func (h *Handler) SubmitJob(c *gin.Context) {
 	job := models.TranscriptionJob{
 		ID:          jobID,
 		AudioPath:   filePath,
-		Status:      models.StatusPending,
+		Status:      models.StatusUploaded,
 		Diarization: diarize,
 		Parameters:  params,
 	}
@@ -790,9 +789,9 @@ func (h *Handler) SubmitJob(c *gin.Context) {
 	}
 
 	// Enqueue job
-	if err := h.taskQueue.EnqueueJob(jobID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue job"})
-		return
+	if err := h.enqueueTranscription(c.Request.Context(), &job); err != nil {
+		// Keep a valid accepted upload retryable when inference capacity is full.
+		logger.Warn("Uploaded audio retained without inference", "job_id", jobID, "error", err)
 	}
 
 	c.JSON(http.StatusOK, job)
@@ -912,12 +911,20 @@ func (h *Handler) GetTranscript(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Security BearerAuth
 func (h *Handler) ListTranscriptionJobs(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	page, pageErr := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, limitErr := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if pageErr != nil || limitErr != nil || page < 1 || limit < 1 || limit > 1000 || page > 1000000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "page must be 1..1000000 and limit 1..1000"})
+		return
+	}
 	offset := (page - 1) * limit
 
 	sortBy := c.Query("sort_by")
 	sortOrder := c.Query("sort_order")
+	if _, _, err := repository.ValidateJobSort(sortBy, sortOrder); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	searchQuery := c.Query("q")
 	updatedAfterStr := c.Query("updated_after")
 
@@ -996,26 +1003,15 @@ func (h *Handler) StartTranscription(c *gin.Context) {
 		return
 	}
 
-	// Update job with parameters
 	job.Parameters = *requestParams
 	job.Diarization = requestParams.Diarize
-	job.Status = models.StatusPending
-
-	// Clear previous results for re-transcription
-	job.Transcript = nil
-	job.Summary = nil
 	job.ErrorMessage = nil
-
-	// Save updated job
-	if err := h.jobRepo.Update(c.Request.Context(), job); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update job"})
-		return
-	}
-
-	// Enqueue job for transcription
-	if err := h.taskQueue.EnqueueJob(jobID); err != nil {
-		logger.Error("Failed to enqueue job", "job_id", jobID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue job"})
+	if err := h.enqueueTranscription(c.Request.Context(), job); err != nil {
+		status := http.StatusServiceUnavailable
+		if errors.Is(err, repository.ErrJobConflict) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -1034,6 +1030,33 @@ func (h *Handler) StartTranscription(c *gin.Context) {
 	logger.JobStarted(jobID, filename, requestParams.ModelFamily, params)
 
 	c.JSON(http.StatusOK, job)
+}
+
+func (h *Handler) enqueueTranscription(ctx context.Context, job *models.TranscriptionJob) (err error) {
+	stored, err := h.jobRepo.FindByID(ctx, job.ID)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		// Scheduling may mutate the argument before its transaction rolls back.
+		// Never expose rejected parameters or a pending state that did not commit.
+		*job = *stored
+		refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+		defer cancel()
+		if current, refreshErr := h.jobRepo.FindByID(refreshCtx, job.ID); refreshErr == nil {
+			*job = *current
+		}
+	}()
+	scheduler, ok := h.jobRepo.(interface {
+		Schedule(context.Context, *models.TranscriptionJob) error
+	})
+	if !ok || h.taskQueue == nil {
+		return fmt.Errorf("atomic scheduling unavailable")
+	}
+	return h.taskQueue.EnqueuePreparedJob(job.ID, func() error { return scheduler.Schedule(ctx, job) })
 }
 
 func (h *Handler) getJobForTranscription(c *gin.Context, jobID string) (*models.TranscriptionJob, error) {
@@ -1101,8 +1124,11 @@ func (h *Handler) getValidatedTranscriptionParams(c *gin.Context, job *models.Tr
 
 	// Parse request body parameters, overriding defaults
 	if err := c.ShouldBindJSON(&requestParams); err != nil {
-		// Use defaults if JSON parsing fails
-		logger.Debug("Failed to parse JSON parameters, using defaults", "error", err)
+		// An absent body retains defaults; malformed nonempty input must not mutate the job.
+		if !errors.Is(err, io.EOF) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid transcription parameters"})
+			return nil, err
+		}
 	}
 
 	// Debug: log what we received
@@ -1256,70 +1282,75 @@ func (h *Handler) DeleteTranscriptionJob(c *gin.Context) {
 		return
 	}
 
-	// Prevent deletion of jobs that are currently processing
-	if job.Status == models.StatusProcessing {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete job that is currently processing"})
+	deleter, ok := h.jobRepo.(interface {
+		BeginDeletion(context.Context, string) error
+		CompleteDeletion(context.Context, string) error
+	})
+	if !ok || h.taskQueue == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Safe deletion unavailable"})
 		return
 	}
-
-	// Delete files
-	if job.IsMultiTrack && job.MultiTrackFolder != nil {
-		_ = h.fileService.RemoveDirectory(*job.MultiTrackFolder)
-	} else {
-		_ = h.fileService.RemoveFile(job.AudioPath)
+	if err := h.taskQueue.BeginJobDeletion(jobID, func() error {
+		return deleter.BeginDeletion(c.Request.Context(), jobID)
+	}); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete an active job"})
+		return
 	}
-
-	// Also remove .aup file if exists
-	if job.AupFilePath != nil {
-		_ = h.fileService.RemoveFile(*job.AupFilePath)
+	// The durable deleting state survives interrupted requests. A repeat DELETE
+	// resumes cleanup; absent files are already-cleaned successes.
+	remove := func(path string, directory bool) error {
+		if path == "" {
+			return nil
+		}
+		var err error
+		if directory {
+			err = h.fileService.RemoveDirectory(path)
+		} else {
+			err = h.fileService.RemoveFile(path)
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
 	}
-
-	// Manually delete related records to handle legacy DBs without CASCADE constraints
-	// 1. Delete Chat Sessions (and their messages via GORM hooks or manual if needed, but let's assume messages are cascaded by session deletion or we delete them too)
-	// Actually, we should use the repositories if available, or direct DB calls if not exposed.
-	// Since we have repositories, let's try to use them or add methods.
-	// However, for speed and robustness here, we can use the jobRepo's DB instance if we had access, but we don't directly.
-	// We should add DeleteByJobID methods to repositories or use a transaction.
-	// Given the constraints, let's add a helper in jobRepo or just rely on the fact that we can't easily access other repos here without adding them to Handler if they aren't already.
-	// Wait, Handler HAS all repos.
-
-	ctx := c.Request.Context()
-
-	// Delete Chat Sessions
-	// We need a method in ChatRepository to delete by JobID or TranscriptionID
-	if err := h.chatRepo.DeleteByJobID(ctx, jobID); err != nil {
-		// Log error but continue? Or fail? Best to try to clean up as much as possible.
-		fmt.Printf("Failed to delete chat sessions for job %s: %v\n", jobID, err)
+	var cleanupErr error
+	if job.IsMultiTrack {
+		if job.MultiTrackFolder != nil {
+			cleanupErr = remove(*job.MultiTrackFolder, true)
+		} else {
+			// Older multipart jobs did not persist their owned folder.
+			var full *models.TranscriptionJob
+			full, cleanupErr = h.jobRepo.FindWithAssociations(c.Request.Context(), jobID)
+			if cleanupErr == nil {
+				for _, track := range full.MultiTrackFiles {
+					if cleanupErr = remove(track.FilePath, false); cleanupErr != nil {
+						break
+					}
+				}
+			}
+		}
 	}
-
-	// Delete Notes
-	if err := h.noteRepo.DeleteByTranscriptionID(ctx, jobID); err != nil {
-		fmt.Printf("Failed to delete notes for job %s: %v\n", jobID, err)
+	if cleanupErr == nil {
+		cleanupErr = remove(job.AudioPath, false)
 	}
-
-	// Delete Summaries
-	if err := h.summaryRepo.DeleteByTranscriptionID(ctx, jobID); err != nil {
-		fmt.Printf("Failed to delete summaries for job %s: %v\n", jobID, err)
+	if cleanupErr == nil && job.AupFilePath != nil {
+		cleanupErr = remove(*job.AupFilePath, false)
 	}
-
-	// Delete Speaker Mappings
-	if err := h.speakerMappingRepo.DeleteByJobID(ctx, jobID); err != nil {
-		fmt.Printf("Failed to delete speaker mappings for job %s: %v\n", jobID, err)
+	if cleanupErr == nil && job.MergedAudioPath != nil {
+		cleanupErr = remove(*job.MergedAudioPath, false)
 	}
-
-	// Delete Job Executions
-	if err := h.jobRepo.DeleteExecutionsByJobID(ctx, jobID); err != nil {
-		fmt.Printf("Failed to delete job executions for job %s: %v\n", jobID, err)
+	if cleanupErr == nil && h.config.TranscriptsDir != "" {
+		cleanupErr = remove(filepath.Join(h.config.TranscriptsDir, jobID), true)
 	}
-
-	// Delete MultiTrack Files (DB records)
-	if err := h.jobRepo.DeleteMultiTrackFilesByJobID(ctx, jobID); err != nil {
-		fmt.Printf("Failed to delete multi-track file records for job %s: %v\n", jobID, err)
+	if cleanupErr == nil && h.config.TempDir != "" {
+		cleanupErr = remove(filepath.Join(h.config.TempDir, jobID), true)
 	}
-
-	// Delete from database
-	if err := h.jobRepo.Delete(c.Request.Context(), jobID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete job: " + err.Error()})
+	if cleanupErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Deletion incomplete; retry DELETE to finish cleanup"})
+		return
+	}
+	if err := deleter.CompleteDeletion(c.Request.Context(), jobID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Deletion pending; retry DELETE to finish database cleanup"})
 		return
 	}
 
@@ -1684,7 +1715,18 @@ func (h *Handler) Register(c *gin.Context) {
 		Password: hashedPassword,
 	}
 
-	if err := h.userRepo.Create(c.Request.Context(), &user); err != nil {
+	bootstrap, ok := h.userRepo.(interface {
+		CreateInitialAdmin(context.Context, *models.User) error
+	})
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Atomic registration unavailable"})
+		return
+	}
+	if err := bootstrap.CreateInitialAdmin(c.Request.Context(), &user); err != nil {
+		if errors.Is(err, repository.ErrAlreadyRegistered) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
 			return
@@ -1704,6 +1746,11 @@ func (h *Handler) Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
 		return
 	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name: "scriberr_access_token", Value: token, Path: "/",
+		Expires: time.Now().Add(24 * time.Hour), HttpOnly: true,
+		Secure: h.config.SecureCookies, SameSite: http.SameSiteLaxMode,
+	})
 	response := LoginResponse{Token: token}
 	response.User.ID = user.ID
 	response.User.Username = user.Username
@@ -2523,6 +2570,10 @@ func (h *Handler) SubmitQuickTranscription(c *gin.Context) {
 	// Submit quick transcription job
 	job, err := h.quickTranscription.SubmitQuickJob(file, header.Filename, params)
 	if err != nil {
+		if errors.Is(err, transcription.ErrQuickQueueFull) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to submit quick transcription: %v", err)})
 		return
 	}

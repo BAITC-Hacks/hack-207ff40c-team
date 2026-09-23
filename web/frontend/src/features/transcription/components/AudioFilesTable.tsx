@@ -309,6 +309,11 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 		setTranscribeDDialogOpen(true);
 	}, []);
 
+    const configuredJobs = Object.keys(rowSelection).length
+        ? data.filter(job => rowSelection[job.id]) : data.filter(job => job.id === selectedJobId);
+    const mixedTrackSelection = new Set(configuredJobs.map(job => !!job.is_multi_track)).size > 1;
+    const configureMultiTrack = configuredJobs[0]?.is_multi_track ?? false;
+
 	// Handle actual transcription start with parameters
 	const handleStartTranscription = useCallback(async (params: WhisperXParams) => {
 		if (!selectedJobId) return;
@@ -477,38 +482,30 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 		if (selectedIds.length === 0) return;
 
 		setBulkActionLoading(true);
-		try {
-			// Process sequentially to avoid overwhelming the server
-			for (const id of selectedIds) {
-				const job = data.find(j => j.id === id);
-				if (!job) continue;
-
-				// Skip if multi-track mismatch
-				if (job.is_multi_track && !params.is_multi_track_enabled) continue;
-				if (!job.is_multi_track && params.is_multi_track_enabled) continue;
-
-				await fetch(`/api/v1/transcription/${id}/start`, {
-					method: "POST",
-					headers: {
-						...getAuthHeaders(),
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(params),
-				});
-			}
-
-			// Clear selection and refresh
-			setRowSelection({});
-			setConfigDialogOpen(false);
-			setTranscribeDDialogOpen(false);
-			setTranscribeDDialogOpen(false);
-			refetch();
-		} catch (error) {
-			console.error("Bulk transcribe error:", error);
-			alert("Error processing bulk transcription");
-		} finally {
-			setBulkActionLoading(false);
-		}
+        const failed: Record<string, boolean> = {};
+        const failures: string[] = [];
+        try {
+            for (const id of selectedIds) {
+                const job = data.find(item => item.id === id);
+                try {
+                    if (!job || !!job.is_multi_track !== !!params.is_multi_track_enabled) {
+                        throw new Error("Select a profile matching this recording's track mode.");
+                    }
+                    const response = await fetch(`/api/v1/transcription/${id}/start`, {
+                        method: "POST", headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                        body: JSON.stringify(params),
+                    });
+                    if (!response.ok) throw new Error(`Server rejected start (${response.status}).`);
+                } catch (cause) {
+                    failed[id] = true;
+                    failures.push(`${job?.title || id}: ${cause instanceof Error ? cause.message : "Connection failed."}`);
+                }
+            }
+            setRowSelection(failed);
+            if (!failures.length) { setConfigDialogOpen(false); setTranscribeDDialogOpen(false); }
+            else alert(`Some recordings were not started and remain selected:\n${failures.join("\n")}`);
+            refetch();
+        } finally { setBulkActionLoading(false); }
 	}, [rowSelection, data, getAuthHeaders, refetch]);
 
 	const handleBulkDelete = useCallback(async () => {
@@ -516,28 +513,23 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 		if (selectedIds.length === 0) return;
 
 		setBulkActionLoading(true);
-		try {
-			// Process sequentially
-			for (const id of selectedIds) {
-				await fetch(`/api/v1/transcription/${id}`, {
-					method: "DELETE",
-					headers: {
-						...getAuthHeaders(),
-					},
-				});
-			}
-
-			// Clear selection and refresh
-			setRowSelection({});
-			setBulkDeleteDialogOpen(false);
-			setBulkDeleteDialogOpen(false);
-			refetch();
-		} catch (error) {
-			console.error("Bulk delete error:", error);
-			alert("Error processing bulk delete");
-		} finally {
-			setBulkActionLoading(false);
-		}
+        const failed: Record<string, boolean> = {};
+        const failures: string[] = [];
+        try {
+            for (const id of selectedIds) {
+                try {
+                    const response = await fetch(`/api/v1/transcription/${id}`, { method: "DELETE", headers: getAuthHeaders() });
+                    if (!response.ok) throw new Error(`Server rejected deletion (${response.status}).`);
+                } catch (cause) {
+                    failed[id] = true;
+                    failures.push(`${id}: ${cause instanceof Error ? cause.message : "Connection failed."}`);
+                }
+            }
+            setRowSelection(failed);
+            setBulkDeleteDialogOpen(false);
+            if (failures.length) alert(`Some recordings were not deleted and remain selected:\n${failures.join("\n")}`);
+            refetch();
+        } finally { setBulkActionLoading(false); }
 	}, [rowSelection, getAuthHeaders, refetch]);
 
 	// Modified handlers to support bulk actions
@@ -922,7 +914,7 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 								<Button
 									variant="ghost"
 									size="icon"
-									onClick={() => setConfigDialogOpen(true)}
+									onClick={() => mixedTrackSelection ? alert("Select only single-track or only multi-track recordings before configuring a batch.") : setConfigDialogOpen(true)}
 									disabled={bulkActionLoading}
 									className="h-9 w-9 rounded-full hover:bg-[var(--brand-light)] hover:text-[var(--brand-solid)] transition-colors"
 								>
@@ -1015,13 +1007,14 @@ export const AudioFilesTable = memo(function AudioFilesTable({
 				open={configDialogOpen}
 				onOpenChange={setConfigDialogOpen}
 				onStartTranscription={onStartTranscribe}
-				loading={transcriptionLoading}
+                isMultiTrack={configureMultiTrack}
+				loading={transcriptionLoading || bulkActionLoading}
 			/>
 			<TranscribeDDialog
 				open={transcribeDDialogOpen}
 				onOpenChange={setTranscribeDDialogOpen}
 				onStartTranscription={onStartTranscribeWithProfile}
-				loading={transcriptionLoading}
+				loading={transcriptionLoading || bulkActionLoading}
 			/>
 
 			{/* Stop Transcription Dialog */}

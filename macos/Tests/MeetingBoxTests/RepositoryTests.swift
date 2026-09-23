@@ -106,3 +106,49 @@ struct RepositoryTests {
         #expect(meeting.segments.count == 1)
     }
 }
+
+struct SnapshotOrderingTests {
+    private func snapshot(_ id: String, revision: Int, status: String, server: String = "hub-a") -> HubMeeting {
+        HubMeeting(meetingID: id, title: "Ordered meeting", status: status, lastSequence: 0,
+                   revision: revision, serverID: server, segments: [],
+                   report: status == "complete" ? MeetingReport(summary: "Final report", decisions: [], actionItems: [], openQuestions: [], topics: [], risks: []) : nil,
+                   error: nil)
+    }
+
+    @Test func delayedHTTPSnapshotCannotUndoCompletedWebSocket() throws {
+        var meeting = LocalMeeting(id: "fixture", title: "Ordering", createdAt: Date())
+        let accepted1 = meeting.applyHubSnapshot(snapshot(meeting.id, revision: 4, status: "complete"))
+        #expect(accepted1)
+        let accepted2 = !meeting.applyHubSnapshot(snapshot(meeting.id, revision: 3, status: "processing"), allowServerChange: true)
+        #expect(accepted2)
+        #expect(meeting.hubStatus == "complete")
+        #expect(meeting.report?.summary == "Final report")
+        let reopened = try JSONDecoder().decode(LocalMeeting.self, from: JSONEncoder().encode(meeting))
+        #expect(reopened.hubRevision == 4)
+        #expect(reopened.hubServerID == "hub-a")
+    }
+
+    @Test func rebuiltHubRequiresHTTPSyncAndRejectsPriorSocket() {
+        var meeting = LocalMeeting(id: "fixture", title: "Rebuild", createdAt: Date())
+        let accepted3 = meeting.applyHubSnapshot(snapshot(meeting.id, revision: 8, status: "complete"))
+        #expect(accepted3)
+        let accepted4 = !meeting.applyHubSnapshot(snapshot(meeting.id, revision: 1, status: "recording", server: "hub-b"))
+        #expect(accepted4)
+        let accepted5 = meeting.applyHubSnapshot(snapshot(meeting.id, revision: 1, status: "recording", server: "hub-b"), allowServerChange: true)
+        #expect(accepted5)
+        let accepted6 = !meeting.applyHubSnapshot(snapshot(meeting.id, revision: 9, status: "complete"))
+        #expect(accepted6)
+        #expect(meeting.hubServerID == "hub-b")
+        #expect(meeting.hubStatus == "recording")
+    }
+
+    @Test func legacyLocalFileWithoutRevisionStillLoads() throws {
+        let meeting = LocalMeeting(id: "fixture", title: "Legacy", createdAt: Date())
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(meeting)) as? [String: Any])
+        object.removeValue(forKey: "hubRevision")
+        object.removeValue(forKey: "hubServerID")
+        let reopened = try JSONDecoder().decode(LocalMeeting.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(reopened.hubRevision == nil)
+        #expect(reopened.hubServerID == nil)
+    }
+}

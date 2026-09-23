@@ -1,5 +1,15 @@
 # Evidence for the secretary's reviewed-minutes workflow
 
+Latest repair evidence: [FOUNDATION_FIXES.md](FOUNDATION_FIXES.md) and
+[eight-check receipt](verification/foundations-20260923/verification.json).
+The 72 review findings now have implementation changes and regression coverage;
+the register also documents additional failures caught during integration. The
+latest core run passed 34 harness tests, 237 station/worker tests, 95 retained
+Python tests, 33 browser regressions and two real review/export workflows, plus
+build/lint. Separate Go race and native build receipts are linked there.
+These are correctness and recovery tests, not a measurement of model quality or
+secretary time saved. The earlier workflow experiment below remains historical.
+
 2026-09-23. Technical acceptance using explicitly synthetic supplied transcripts
 and reports; no end-user study or ASR/LLM inference. Selection:
 [DECISION.md](DECISION.md). Product evidence and raw logs:

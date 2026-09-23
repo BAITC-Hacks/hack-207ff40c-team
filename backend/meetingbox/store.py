@@ -2,6 +2,7 @@ import json
 import sqlite3
 import threading
 import time
+from uuid import uuid4
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -60,6 +61,24 @@ class Store:
                 available_at REAL NOT NULL, error TEXT, metadata TEXT
             );
         """)
+
+        # Existing databases gain a durable integer ordering independent of wall clocks.
+        if "revision" not in {row[1] for row in self.connection.execute("PRAGMA table_info(meetings)")}:
+            self.connection.execute("ALTER TABLE meetings ADD COLUMN revision INTEGER NOT NULL DEFAULT 1")
+        self.connection.executescript("""
+            CREATE TABLE IF NOT EXISTS store_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TRIGGER IF NOT EXISTS meeting_revision AFTER UPDATE ON meetings
+            WHEN NEW.revision = OLD.revision
+            BEGIN
+                UPDATE meetings SET revision=OLD.revision+1 WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS audio_revision AFTER UPDATE ON audio_jobs
+            BEGIN
+                UPDATE meetings SET revision=revision+1 WHERE id=NEW.meeting_id;
+            END;
+        """)
+        self.connection.execute("INSERT OR IGNORE INTO store_metadata VALUES('server_id',?)", (str(uuid4()),))
+        self.server_id = self.connection.execute("SELECT value FROM store_metadata WHERE key='server_id'").fetchone()[0]
 
     @contextmanager
     def transaction(self):
@@ -167,6 +186,7 @@ class Store:
             row = self._meeting(self.connection, meeting_id)
             result = dict(row)
             result["meeting_id"] = result.pop("id")
+            result["server_id"] = self.server_id
             result.pop("next_incremental")
             result["report"] = json.loads(result["report"]) if result["report"] else None
             result["segments"] = [dict(item) for item in self.connection.execute("SELECT sequence,start,end,speaker,text FROM segments WHERE meeting_id=? ORDER BY sequence", (meeting_id,))]

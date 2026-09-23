@@ -86,6 +86,7 @@ def export_ics(path: Path, protocol: MeetingProtocol) -> None:
 
 
 def _ics_escape(value: str) -> str:
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
     return value.replace("\\", "\\\\").replace("\n", "\\n").replace(";", "\\;").replace(",", "\\,")
 
 
@@ -149,7 +150,7 @@ def export_pdf(path: Path, protocol: MeetingProtocol, font_path: str | None = No
          Paragraph(escape(" · ".join(dict.fromkeys(value for value in (item.deadline_date.isoformat() if item.deadline_date else None, item.deadline_text) if value)) or "—"), styles["BodyText"]), Paragraph(t(item.priority), styles['BodyText'])]
         for item in protocol.action_items
     ])
-    table = Table(rows, repeatRows=1, colWidths=[90, 250, 90, 70])
+    table = Table(rows, repeatRows=1, colWidths=[90, 250, 90, 70], splitInRow=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeec")),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),

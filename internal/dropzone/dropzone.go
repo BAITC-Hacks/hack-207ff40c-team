@@ -2,13 +2,19 @@ package dropzone
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"strconv"
+
 	"fmt"
+	"gorm.io/gorm"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"scriberr/internal/config"
 	"scriberr/internal/models"
@@ -20,7 +26,7 @@ import (
 
 // TaskQueue interface for enqueueing transcription jobs
 type TaskQueue interface {
-	EnqueueJob(jobID string) error
+	EnqueuePreparedJob(jobID string, prepare func() error) error
 }
 
 // Service manages the dropzone file monitoring
@@ -121,7 +127,7 @@ func (s *Service) processExistingFiles() error {
 		// Only process files, not directories
 		if !info.IsDir() {
 			filename := filepath.Base(path)
-			if s.isAudioFile(filename) {
+			if strings.HasSuffix(filename, ".ready") {
 				log.Printf("Processing existing audio file: %s", path)
 				s.processFile(path)
 			}
@@ -141,7 +147,7 @@ func (s *Service) watchFiles() {
 			}
 
 			// Handle creation events for both files and directories
-			if event.Op&fsnotify.Create == fsnotify.Create {
+			if event.Op&(fsnotify.Create|fsnotify.Write) != 0 {
 				// Check if the created item is a directory
 				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
 					log.Printf("Detected new directory in dropzone: %s", event.Name)
@@ -181,74 +187,130 @@ func (s *Service) isAudioFile(filename string) bool {
 }
 
 // processFile handles a newly detected file in the dropzone
-func (s *Service) processFile(filePath string) {
-	// Small delay to ensure file is fully written
-	time.Sleep(500 * time.Millisecond)
+// ReadyManifest is written atomically by the producer after closing the audio.
+// Keeping the producer-owned source prevents late writers from losing their data.
+type ReadyManifest struct {
+	Bytes     int64  `json:"bytes"`
+	SHA256    string `json:"sha256"`
+	HandoffID string `json:"handoff_id,omitempty"`
+}
 
-	filename := filepath.Base(filePath)
-
-	// Check if it's an audio file
-	if !s.isAudioFile(filename) {
-		log.Printf("Skipping non-audio file: %s", filename)
-		return
-	}
-
-	// Check if file exists and is accessible
-	fileInfo, err := os.Stat(filePath)
+func readReady(path string) (ReadyManifest, error) {
+	var ready ReadyManifest
+	source, err := os.Open(path)
 	if err != nil {
-		log.Printf("Error accessing file %s: %v", filePath, err)
-		return
+		return ready, err
 	}
-
-	// Skip if it's a directory
-	if fileInfo.IsDir() {
-		return
+	defer source.Close()
+	data, err := io.ReadAll(io.LimitReader(source, 4097))
+	if err != nil || len(data) > 4096 {
+		return ready, fmt.Errorf("invalid readiness marker")
 	}
-
-	log.Printf("Processing audio file: %s", filename)
-
-	// Upload the file using the same logic as the API handler
-	if err := s.uploadFile(filePath, filename); err != nil {
-		log.Printf("Failed to upload file %s: %v", filename, err)
-		return
+	if err := json.Unmarshal(data, &ready); err != nil {
+		return ready, err
 	}
-
-	// Delete the original file from dropzone after successful upload
-	// Retry a few times in case of file locks
-	var deleteErr error
-	for i := 0; i < 5; i++ {
-		deleteErr = os.Remove(filePath)
-		if deleteErr == nil {
-			break
+	digest, err := hex.DecodeString(ready.SHA256)
+	if err != nil || len(digest) != sha256.Size || ready.Bytes < 1 {
+		return ready, fmt.Errorf("readiness marker needs positive bytes and SHA256")
+	}
+	ready.SHA256 = strings.ToLower(ready.SHA256)
+	if ready.HandoffID != "" {
+		id, err := uuid.Parse(ready.HandoffID)
+		if err != nil || id == uuid.Nil || !strings.EqualFold(id.String(), ready.HandoffID) {
+			return ready, fmt.Errorf("handoff_id must be a nonzero UUID in canonical form")
 		}
-		// If it's a permission error or similar, wait and retry
-		time.Sleep(500 * time.Millisecond)
+		ready.HandoffID = id.String()
 	}
+	return ready, nil
+}
 
-	if deleteErr != nil {
-		log.Printf("Warning: Failed to delete file from dropzone %s after retries: %v", filePath, deleteErr)
-	} else {
-		log.Printf("Successfully processed and removed file: %s", filename)
+func (s *Service) processFile(filePath string) {
+	filePath = strings.TrimSuffix(filePath, ".ready")
+	filename := filepath.Base(filePath)
+	if !s.isAudioFile(filename) {
+		return
 	}
+	ready, err := readReady(filePath + ".ready")
+	if err != nil {
+		return
+	} // A Create/Write event is not a completion signal.
+	if err := s.uploadFile(filePath, filename, ready); err != nil {
+		log.Printf("Dropzone import failed; source and marker retained: %s: %v", filename, err)
+		return
+	}
+	// Consume only the marker we processed, never a replacement handoff.
+	if current, err := readReady(filePath + ".ready"); err == nil && current == ready {
+		if err := os.Remove(filePath + ".ready"); err != nil {
+			log.Printf("Imported recording but could not remove readiness marker: %v", err)
+		}
+	}
+	log.Printf("Acknowledged %s handoff; producer-owned source retained for explicit cleanup", filename)
 }
 
 // uploadFile uploads the file using the existing pipeline logic
-func (s *Service) uploadFile(sourcePath, originalFilename string) error {
-	// Create upload directory
+func (s *Service) uploadFile(sourcePath, originalFilename string, ready ReadyManifest) error {
 	uploadDir := s.config.UploadDir
+	// Keep legacy identity unchanged. An explicit new handoff permits a deliberate
+	// reimport while retries of the same marker retain their original identity.
+	canonical, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return err
+	}
+	identity := canonical + "\x00" + ready.SHA256 + "\x00" + strconv.FormatInt(ready.Bytes, 10)
+	if ready.HandoffID != "" {
+		identity += "\x00" + ready.HandoffID
+	}
+	jobID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(identity)).String()
+	var existing *models.TranscriptionJob
+	if lookup, ok := s.jobRepo.(interface {
+		FindByIDIncludingDeleted(context.Context, string) (*models.TranscriptionJob, error)
+	}); ok {
+		existing, err = lookup.FindByIDIncludingDeleted(context.Background(), jobID)
+	} else {
+		existing, err = s.jobRepo.FindByID(context.Background(), jobID)
+	}
+	if err == nil {
+		if existing.DeletedAt.Valid {
+			// The accepted handoff was deliberately deleted. Acknowledge its replay
+			// before touching audio; never restore content into that tombstone.
+			return nil
+		}
+		if err := verifyReadyBytes(existing.AudioPath, ready); err != nil {
+			return fmt.Errorf("previous import archive unavailable: %w", err)
+		}
+		return nil // Lost marker acknowledgment/restart: this handoff already committed.
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		return fmt.Errorf("failed to create upload directory: %v", err)
 	}
-
-	// Generate unique filename
-	jobID := uuid.New().String()
 	ext := filepath.Ext(originalFilename)
 	filename := fmt.Sprintf("%s%s", jobID, ext)
 	destPath := filepath.Join(uploadDir, filename)
 
 	// Copy file from dropzone to upload directory
-	if err := s.copyFile(sourcePath, destPath); err != nil {
-		return fmt.Errorf("failed to copy file: %v", err)
+	if _, err := os.Lstat(destPath); err == nil {
+		// A crash may have left the durable archive before its DB insertion.
+		if err := verifyReadyBytes(destPath, ready); err != nil {
+			if err := os.Remove(destPath); err != nil {
+				return err
+			}
+		}
+	}
+	if _, err := os.Stat(destPath); os.IsNotExist(err) {
+		if err := s.copyVerifiedFile(sourcePath, destPath, ready); err != nil {
+			return fmt.Errorf("failed to copy file: %w", err)
+		}
+	}
+	directory, err := os.Open(uploadDir)
+	if err != nil {
+		return err
+	}
+	syncErr := directory.Sync()
+	_ = directory.Close()
+	if syncErr != nil {
+		return syncErr
 	}
 
 	// Create job record with "uploaded" status
@@ -261,29 +323,19 @@ func (s *Service) uploadFile(sourcePath, originalFilename string) error {
 
 	// Save to database
 	if err := s.jobRepo.Create(context.Background(), &job); err != nil {
-		os.Remove(destPath) // Clean up file on database error
+		// Keep the verified archive for idempotent recovery after a database failure.
 		return fmt.Errorf("failed to create job record: %v", err)
 	}
 
-	// Check if auto-transcription is enabled
-	if s.isAutoTranscriptionEnabled() {
-		// Multi-track files should never be auto-transcribed
-		if job.IsMultiTrack {
-			log.Printf("Skipping auto-transcription for multi-track job %s", jobID)
+	if s.isAutoTranscriptionEnabled() && !job.IsMultiTrack {
+		scheduler, ok := s.jobRepo.(interface {
+			Schedule(context.Context, *models.TranscriptionJob) error
+		})
+		if !ok {
+			log.Printf("Automatic transcription unavailable; imported job %s remains uploaded", jobID)
 		} else {
-			log.Printf("Auto-transcription enabled, enqueueing job %s", jobID)
-
-			// Update job status to pending before enqueueing
-			job.Status = models.StatusPending
-			if err := s.jobRepo.Update(context.Background(), &job); err != nil {
-				log.Printf("Warning: Failed to update job status to pending: %v", err)
-			}
-
-			// Enqueue the job for transcription
-			if err := s.taskQueue.EnqueueJob(jobID); err != nil {
-				log.Printf("Failed to enqueue job %s for transcription: %v", jobID, err)
-			} else {
-				log.Printf("Job %s enqueued for auto-transcription", jobID)
+			if err := s.taskQueue.EnqueuePreparedJob(jobID, func() error { return scheduler.Schedule(context.Background(), &job) }); err != nil {
+				log.Printf("Automatic transcription not admitted; imported job %s remains available for manual start: %v", jobID, err)
 			}
 		}
 	}
@@ -303,24 +355,72 @@ func (s *Service) isAutoTranscriptionEnabled() bool {
 	return count > 0
 }
 
-// copyFile copies a file from source to destination
-func (s *Service) copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
+// copyVerifiedFile streams only a producer-declared complete immutable recording.
+func (s *Service) copyVerifiedFile(src, dst string, ready ReadyManifest) (resultErr error) {
+	before, err := os.Lstat(src)
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
+	if !before.Mode().IsRegular() || before.Size() != ready.Bytes {
+		return fmt.Errorf("recording is not ready or size changed")
+	}
+	source, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, sourceFile)
+	defer source.Close()
+	opened, err := source.Stat()
+	if err != nil || !os.SameFile(before, opened) {
+		return fmt.Errorf("recording changed before copy")
+	}
+	destination, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		closeErr := destination.Close()
+		if resultErr == nil {
+			resultErr = closeErr
+		}
+		if resultErr != nil {
+			_ = os.Remove(dst)
+		}
+	}()
+	digest := sha256.New()
+	count, err := io.Copy(io.MultiWriter(destination, digest), io.LimitReader(source, ready.Bytes+1))
+	if err != nil {
+		return err
+	}
+	if count != ready.Bytes || hex.EncodeToString(digest.Sum(nil)) != ready.SHA256 {
+		return fmt.Errorf("recording does not match its completion marker")
+	}
+	after, err := source.Stat()
+	if err != nil || after.Size() != before.Size() || !after.ModTime().Equal(before.ModTime()) {
+		return fmt.Errorf("recording changed while being copied")
+	}
+	return destination.Sync()
+}
 
-	return destFile.Sync()
+func verifyReadyBytes(path string, ready ReadyManifest) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() || info.Size() != ready.Bytes {
+		return fmt.Errorf("archive size or type differs")
+	}
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	digest := sha256.New()
+	count, err := io.Copy(digest, io.LimitReader(source, ready.Bytes+1))
+	if err != nil {
+		return err
+	}
+	if count != ready.Bytes || hex.EncodeToString(digest.Sum(nil)) != ready.SHA256 {
+		return fmt.Errorf("archive checksum differs")
+	}
+	return nil
 }

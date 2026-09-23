@@ -1,324 +1,180 @@
-<table>
-  <tr>
-    <td width="220" align="center">
-      <img src="docs/assets/readme/meet-box-wordmark.png" width="220" alt="Логотип MEET-BOX" />
-    </td>
-    <td>
-      <h1>MEET-BOX</h1>
-      <p><strong>От записи совещания — к поручениям, которые можно проверить.</strong></p>
-      <p>Локальная станция записи и архива + локальный inference worker.<br />Аудио, расшифровка и обработка — внутри контура заказчика.</p>
-      <p><strong>Русский · Қазақша · Смешанная речь</strong><br />Источники · Проверка секретарём · Версии · PDF / DOCX</p>
-    </td>
-  </tr>
-</table>
-
 <p align="center">
-  <a href="#problem">Проблема</a> ·
-  <a href="#workflow">Как работает</a> ·
-  <a href="#architecture">Архитектура</a> ·
-  <a href="#security">Безопасность</a> ·
-  <a href="#value">Почему этот подход</a> ·
-  <a href="#start">Запуск</a> ·
-  <a href="#evidence">Проверки</a>
+  <img src="docs/assets/readme/hero.svg" alt="Meeting Station — private meetings, traceable decisions. Russian, Kazakh and mixed speech. Local models, human review and export." width="1200" />
 </p>
 
-**MEET-BOX помогает секретарю превратить обсуждение в проверяемый протокол:**
-найти поручение, сверить его с исходной репликой, уточнить ответственного и срок,
-сохранить правку и выгрузить согласованные документы. В текущем интерфейсе
-приложение называется **Meeting Station**.
+<p align="center">
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#security">Security</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#verification">Test results</a> ·
+  <a href="docs/REQUIREMENTS.md">Case requirements</a>
+</p>
 
-<a id="problem"></a>
+# Meeting Station
 
-## 01 · Проблема: договорённость прозвучала — как сохранить её смысл?
+**Turn a meeting recording into minutes you can check.** Meeting Station prepares a transcript, summary and task table. The secretary opens a task's source passage, listens to the audio, corrects the owner or deadline, and saves a reviewed version for export.
 
-<img align="right" src="docs/assets/readme/samruk-kazyna-logo.jpg" width="190" alt="Логотип Самрук-Казына — владельца кейса" />
+<p align="center">
+  <img src="docs/assets/readme/samruk-kazyna-logo.jpg" alt="Samruk-Kazyna, the hackathon case owner" width="110" /><br />
+  <sub>Built for the Samruk-Kazyna meeting-minutes challenge · MEET-BOX project</sub>
+</p>
 
-**Кейс Самрук-Казына — «Система автопротоколирования совещаний с фиксацией поручений».**
+The problem is familiar: someone writes the minutes by hand, a deadline changes during the conversation, and the final task list loses who promised what. The [case](docs/CHALLENGE.md) adds an essential constraint: Russian, Kazakh and mixed-language meetings must be processed without sending audio or text to external AI APIs.
 
-Секретарь вручную восстанавливает ход обсуждения, участников, решения и сроки.
-Во время совещания поручение может сменить владельца, а дата — уточниться.
-В итоговом документе легко потерять именно ту версию договорённости, по которой
-предстоит работать. Руководителю затем приходится выяснять, кто что обещал.
+Our approach keeps the recording, models and review on local equipment. **The secretary works from a traceable draft instead of reconstructing the meeting from scratch.**
 
-У задачи есть обязательная граница: **аудио и текст нельзя отправлять во внешние
-облачные API**. Нужны локальные модели, русский, казахский и смешанная речь,
-различение говорящих, поручения и экспорт протокола.
-[Полный текст кейса и критерии](docs/CHALLENGE.md).
+## How it works
 
-**Изменение для пользователя:** секретарь получает черновик с источниками и
-инструменты его проверки; руководитель — структурированный список поручений,
-в котором можно проследить основание и внесённые правки.
+1. **Bring in the meeting.** Upload audio/video, or use a microphone connected to the room station. Notify participants before recording and AI transcription begin.
+2. **Transcribe locally.** Whisper turns audio into text. Enable Sherpa speaker separation to add anonymous speaker labels; the reviewer connects those labels to people.
+3. **Prepare the draft.** A local Qwen model extracts decisions, tasks, stated owners and deadlines. The report also includes a summary, topics, open questions and risks.
+4. **Check the evidence.** Source links open the supporting transcript passage and seek the audio player to its timestamp. The original transcript remains available.
+5. **Resolve the details.** Correct a task, reject it or add a missed assignment from a source passage. Save a revision with the reviewer name, time and reason for the changes.
+6. **Take the result with you.** Export that revision as **PDF, DOCX, JSON, CSV or a calendar task file**. The same reviewed records feed each format.
 
-<a id="workflow"></a>
+Processing runs after capture finishes. The appliance also has a browser for online meetings, subject to host admission and account permissions. Importing a text transcript skips speech recognition and speaker separation.
 
-## 02 · Как всё работает — последовательно
+### A changed assignment should stay one assignment
 
-**Запись → локальный архив → распознавание → поручения с источниками → проверка → документы.**
+> “Dana will send the report on Friday.”  
+> Later: “Timur will take over the report. The deadline is Monday.”
 
-| Шаг | Что происходит | Что получает пользователь |
-| --- | --- | --- |
-| **1. Добавить совещание** | Секретарь уведомляет участников о записи и ИИ-транскрибации. В **Import** загружает аудио/видео и выбирает язык. Запись с микрофона станции и подключение к звонку доступны в отдельной аппаратной конфигурации. | Совещание в локальном архиве и видимый статус обработки. |
-| **2. Передать в локальную очередь** | Station сохраняет источник и передаёт задание своему worker. Архив и очередь живут отдельно от процесса распознавания. При недоступности worker предусмотрены отложенная доставка и повторные попытки. | Запись можно хранить на станции, пока вычислитель занят или недоступен. |
-| **3. Распознать речь и разделить голоса** | Worker нормализует аудио через FFmpeg, запускает multilingual Whisper и, при включённой диаризации, Sherpa ONNX. Для кейса нужны установленные модели диаризации и **Separate speakers**. | Реплики с временными метками и метками говорящих; имена затем подтверждает человек. |
-| **4. Собрать черновик** | Локальная модель через Ollama извлекает темы, решения и поручения. Сервер связывает выводы с репликами; смысловая проверка учитывает хронологию. Непроверенные выводы остаются на ревью. | Поручения с полями «что / кто / когда», саммари и ссылки на источник. |
-| **5. Проверить и исправить** | В **Review & correct** секретарь сопоставляет голоса с именами, правит владельца и срок, подтверждает или отклоняет вывод. **Add missed action** позволяет восстановить пропущенное поручение из выбранных реплик. | Явное решение проверяющего, сохранённая исходная цитата и история изменений. |
-| **6. Сохранить версию и выгрузить** | Worker создаёт новую версию результата и набор документов; station получает её в свой архив. **Export** скачивает выбранный формат. | PDF, редактируемый DOCX, JSON, CSV и календарные задачи ICS из одной версии данных. |
+The extraction pipeline reads the discussion in order and checks later corrections against earlier tasks. The intended result is one task for Timur, with Monday preserved as the spoken deadline. The secretary can confirm the actual calendar date while reviewing the source.
 
-Диаризация различает голоса; личность участника подтверждает секретарь. Фраза
-«сделаем скоро» требует уточнения владельца и даты. Интерфейс позволяет оставить
-поручение в **Needs review**; относительный срок и подтверждённая календарная дата
-хранятся раздельно. Проверка человеком остаётся частью рабочего процесса.
+Unspecified owners and deadlines stay empty. A local model checks findings against their cited passages and exposes review issues or an unavailable check. These checks can miss errors; the source audio and human correction remain part of the workflow.
 
-### Реальный интерфейс: от импорта до сохранённой версии
+[Extraction and checks](mac-worker/src/meeting_worker/pipeline.py) · [Review contract](docs/ARCHITECTURE.md#human-review-contract) · [Report fields](mac-worker/src/meeting_worker/protocol.py)
 
-Ниже — снимки текущего приложения. Данные **синтетические**, взяты из проверочного
-сценария; ASR и генерация модели при съёмке не запускались. Формы, API, сохранение
-правок и повторное открытие версии работают через реальные локальные сервисы.
-Нажмите на снимок, чтобы открыть его в полном размере.
+<details>
+<summary><strong>See the interface: import → transcript → review → saved minutes</strong></summary>
+
+These are actual application screenshots using explicitly synthetic meeting data. The capture exercised local APIs, editing, persistence and reload; it did not run speech or language models. Click an image to inspect it.
 
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <a href="docs/assets/readme/01-import.png"><img src="docs/assets/readme/01-import.png" width="480" alt="Импорт совещания: файл, русский и казахский языки, параметры диаризации" /></a>
-      <p><strong>1 · Импорт.</strong> Язык записи, язык отчёта и параметры обработки задаются до отправки.</p>
-    </td>
-    <td width="50%" valign="top">
-      <a href="docs/assets/readme/02-transcript.png"><img src="docs/assets/readme/02-transcript.png" width="480" alt="Расшифровка синтетического примера: русские и казахские реплики, говорящие и временные метки" /></a>
-      <p><strong>2 · Источник.</strong> Реплики и временные метки помогают проверить, что именно было сказано.</p>
-    </td>
+    <td width="50%"><a href="docs/assets/readme/01-import.png"><img src="docs/assets/readme/01-import.png" alt="Import a recording and choose meeting language and speaker separation" width="480" /></a><br /><strong>1. Import the meeting</strong></td>
+    <td width="50%"><a href="docs/assets/readme/02-transcript.png"><img src="docs/assets/readme/02-transcript.png" alt="Russian and Kazakh transcript with speaker labels and source timestamps" width="480" /></a><br /><strong>2. Read the source</strong></td>
   </tr>
   <tr>
-    <td width="50%" valign="top">
-      <a href="docs/assets/readme/03-review.png"><img src="docs/assets/readme/03-review.png" width="480" alt="Проверка поручения: имена участников, ответственный Тимур, дата, исходная реплика и комментарий секретаря" /></a>
-      <p><strong>3 · Решение секретаря.</strong> Ответственный и срок исправляются рядом с исходной цитатой.</p>
-    </td>
-    <td width="50%" valign="top">
-      <a href="docs/assets/readme/04-reviewed-minutes.png"><img src="docs/assets/readme/04-reviewed-minutes.png" width="480" alt="Сохранённая версия 1: история ревью, саммари, поручение и выбор формата экспорта" /></a>
-      <p><strong>4 · Сохранённый результат.</strong> Версия, правки и поручение доступны после перезагрузки страницы.</p>
-    </td>
+    <td width="50%"><a href="docs/assets/readme/03-review.png"><img src="docs/assets/readme/03-review.png" alt="Secretary corrects an assignment's owner and date beside its supporting quote" width="480" /></a><br /><strong>3. Correct and review</strong></td>
+    <td width="50%"><a href="docs/assets/readme/04-reviewed-minutes.png"><img src="docs/assets/readme/04-reviewed-minutes.png" alt="Saved report revision with review history and document export" width="480" /></a><br /><strong>4. Save and export</strong></td>
   </tr>
 </table>
 
-[Происхождение изображений и снимков](docs/assets/readme/README.md) ·
-[Примеры документов и проверка содержимого](docs/SUBMISSION_NOTES.md)
+[Capture receipt and image provenance](docs/assets/readme/README.md)
 
-<a id="architecture"></a>
+</details>
 
-## 03 · Две локальные роли: станция и вычислитель
+## Two devices, one local workflow
 
-**Local station + local inference worker** — основа решения. Станция отвечает за
-запись, очередь и доступ к архиву. Вычислитель отвечает за ресурсоёмкие модели.
-Оба размещаются в инфраструктуре заказчика.
+A **room station** is a small computer that stays connected to the meeting-room microphone. It records the meeting, holds the queue and keeps the archive. We use a **Radxa Cubie A7A**, a single-board computer, for that role.
 
-```mermaid
-flowchart TB
-    Secretary["Секретарь · браузер"]
-    subgraph Private["Локальный контур заказчика"]
-        UI["React · просмотр, проверка, экспорт"]
-        Station["Local station · Radxa / локальный компьютер<br/>Запись, API, очередь, архив"]
-        Archive[("Записи и версии протоколов<br/>SQLite + файлы")]
-        Worker["Local inference worker · рабочая станция<br/>Нормализация, модели, проверка, документы"]
-        Models["FFmpeg → Whisper → Sherpa ONNX<br/>Ollama / Qwen"]
-        UI -->|"station token"| Station
-        Station --- Archive
-        Station -->|"worker token · loopback / LAN + mTLS"| Worker
-        Worker --> Models
-        Models -->|"транскрипт и черновик"| Worker
-        Worker -->|"результат и версии экспорта"| Station
-    end
-    Secretary --> UI
-```
+A **local inference worker** is the computer that does the heavier AI processing. In the documented installation, it is a Mac on the same private network. The browser talks to the station; the station sends work to the Mac and stores the returned reports.
 
-### Почему Radxa — станция записи и архива
+![The browser connects to the room station over HTTPS. The station keeps the archive and exchanges jobs with the local Mac worker over mutual TLS. Results return for human review.](docs/assets/readme/local-architecture.svg)
 
-Устройство в переговорной удобно оставить подключённым к микрофону и локальной
-сети. Для моделей можно выделить подходящий Mac или другой совместимый локальный
-вычислитель. Так требования к памяти и производительности ИИ не определяют
-конструкцию каждого устройства в переговорной. Обновление моделей относится к
-worker, а исходные записи и доступные версии отчётов хранятся на станции.
+| Device in the documented installation | Responsibility |
+| --- | --- |
+| **Radxa Cubie A7A** · 6 GB RAM · Debian 11 | Web interface, microphone recording, persistent queue, meeting archive and online-meeting browser. |
+| **MacBook Air M5** · 16 GB memory | FFmpeg audio preparation, Whisper speech recognition, optional Sherpa speaker separation, Qwen3.5 4B and document generation. |
+
+**Why separate them?** Recording and archive access stay with the room station; model memory and compute belong on the worker. A running, unlocked station retains queued recordings when the Mac is unavailable and resumes processing when it reconnects. Completed reports remain available from the station.
+
+After a station reboot, automatic vault unlocking needs the Mac logged in, awake and reachable. The [runbook](docs/RUNBOOK.md) covers startup and recovery. A [one-computer installation](docs/LOCAL_SETUP.md) runs both roles locally for evaluation without buying a board.
+
+<details>
+<summary><strong>The room station: enclosure concept and rotating view</strong></summary>
 
 <table>
   <tr>
-    <td width="50%" align="center">
-      <img src="docs/assets/readme/station-enclosure-concept.png" width="480" alt="Концепт корпуса локальной станции Radxa с символикой Самрук-Казына" />
-      <p><strong>Станция в переговорной</strong><br />Концепт корпуса для записи и локального архива.</p>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/assets/readme/station-turntable.gif" width="480" alt="Вращающийся концепт корпуса станции — визуализация, не запись работы устройства" />
-      <p><strong>Вид со всех сторон</strong><br />Визуализация предлагаемого устройства.</p>
-    </td>
+    <td width="50%"><img src="docs/assets/readme/station-enclosure-concept.png" alt="Concept enclosure for the room recording station, with Samruk-Kazyna case branding" width="480" /></td>
+    <td width="50%"><img src="docs/assets/readme/station-turntable.gif" alt="Animated concept of the station enclosure" width="480" /></td>
   </tr>
 </table>
 
-*Корпус и GIF — концептуальные визуализации. Они не являются проверенным CAD,
-производственным чертежом или доказательством работы физического устройства.*
+Participant-supplied design concepts, not validated CAD or evidence of hardware performance. [Artwork provenance](docs/assets/readme/README.md).
 
-| Вариант развёртывания | Где станция | Где модели | Назначение |
-| --- | --- | --- | --- |
-| **Один компьютер** | Локальный Python-сервис и файловый архив | Второй Python-сервис и отдельно запущенный Ollama на том же компьютере | Проверка интерфейса, импорт записей и воспроизводимый старт без Radxa. |
-| **Комнатная станция + worker** | Radxa, микрофон, локальный архив и веб-доступ | Отдельный вычислитель в частной сети, соединение с mTLS | Аппаратный сценарий переговорной; требует отдельной настройки и проверки. |
+</details>
 
-Подключение к Meet/Zoom/Teams относится к отдельному
-[appliance-сценарию](docs/RUNBOOK.md) и требует доступа к самой платформе звонка.
-Локальная обработка импортированной записи не требует подключения к этим сервисам.
-Подробные границы компонентов: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+[Component architecture](docs/ARCHITECTURE.md) · [Appliance architecture](docs/APPLIANCE_ARCHITECTURE.md) · [Station service](station/) · [Inference worker](mac-worker/)
 
-<a id="security"></a>
+## Security
 
-## 04 · Безопасность начинается с маршрута данных
+**Local processing is the starting point. The configured appliance also protects the network links and stored meeting data.**
 
-**В основном сценарии аудио и текст направляются в собственные station и worker;
-внешний облачный AI API не нужен.** Модели заранее размещаются локально. При
-отсутствии модели приложение сообщает о проблеме; облачного fallback в этом
-сценарии нет. Подготовка окружения и загрузка весов выполняются отдельно от
-обработки совещаний.
+![Security controls: HTTPS for the browser, mutual TLS between the devices, encrypted archive contents and filenames, and locally installed inference models.](docs/assets/readme/security.svg)
 
-| Защита в текущем локальном пути | Как устроена | Практическое значение |
+- **Browser → station: HTTPS.** A private certificate authority establishes trust in the station. Secure cookies, a same-origin content policy and uncached API responses protect the browser session.
+- **Station ↔ worker: mutual TLS.** Each device proves its identity with a certificate, alongside a separate worker token. The station checks the worker's certificate authority and address; the worker requires a trusted client certificate. Invalid identities are rejected, with no HTTP fallback.
+- **Archive at rest: encrypted contents and filenames.** The appliance uses a gocryptfs vault for recordings, transcripts, exports, databases, browser state and credentials. Startup guards keep services stopped while it is locked. The vault password stays off the board; the documented Mac uses FileVault.
+- **Models: local and explicit.** Ollama listens on the Mac's loopback interface. Models are installed before use; this pipeline has no external AI fallback. Worker requests reject public destinations, redirects and environment proxies.
+
+[Security and recovery guide](docs/SECURITY.md) · [Device certificate generation](scripts/create-worker-pki.py) · [HTTPS configuration](deploy/radxa/Caddyfile.station.example) · [Vault startup guard](deploy/radxa/unlock-vault.sh)
+
+These are appliance deployment controls: the one-computer launcher uses loopback HTTP and does not provision an encrypted vault. Downloads happen during setup; online meetings still connect to their provider. Keep certificate verification enabled and renew the 90-day device certificates before expiry.
+
+Encryption protects traffic and the locked archive. An administrator or malware on an unlocked device can still access data. The current shared station token is not per-person access control, and the review history is not a tamper-proof audit log.
+
+## Installation
+
+Choose the deployment you need. Model files, certificates and private device configuration are not bundled in the repository.
+
+| Start here | What you need | Guide |
 | --- | --- | --- |
-| **Локальные границы сети** | Standalone-host привязан к loopback; адрес worker проверяется как частный endpoint. | Локальная установка не открывает приложение всей офисной сети по умолчанию. |
-| **Раздельные полномочия сервисов** | Браузер использует station-токен. Отдельный worker-токен хранится на сервере. | Доступ к интерфейсу не раскрывает credential канала между сервисами. |
-| **Защищённый канал к LAN-worker** | Требуются HTTPS, доверенный CA и клиентский сертификат/ключ — взаимный TLS. | Станция и вычислитель проверяют доверие при обмене за пределами loopback. |
-| **Явный выбор локальных моделей** | Worker проверяет метаданные локальной модели; HTTP-клиенты игнорируют proxy из окружения и не следуют redirect. | Ошибка настройки не включает автоматическую отправку обсуждения облачному провайдеру. |
-| **Проверяемые правки** | Исходные цитаты сохраняются; запрос ревью содержит ожидаемую версию и идентификатор повторной отправки. | Конфликт версий виден пользователю, а сохранённую правку можно связать с её основанием. |
-| **Приватные рабочие данные** | Токены и локальное состояние отделены от исходников; приватные файлы исключены из Git. | Сборка исходников не должна включать записи и рабочие секреты. |
+| **One computer** | Python 3.11+, Node 22.12+, FFmpeg, local speech/diarization models and Ollama. The model setup uses Python 3.12. | [Local installation](docs/LOCAL_SETUP.md) |
+| **Room station + Mac** | The same local inference resources, a provisioned Radxa, the Go toolchain from `go.mod`, and device certificates. | [Station installation](docs/STATION_SETUP.md) |
 
-Контроли реализованы в [station](station/src/meeting_station/config.py),
-[локальном host](station/src/meeting_station/local.py),
-[worker](mac-worker/src/meeting_worker/config.py) и
-[контракте ревью](docs/ARCHITECTURE.md#human-review-contract).
-
-**Граница текущей версии:** общий station-токен ещё не заменяет персональные роли.
-Имя проверяющего вводится пользователем; журнал правок не является криптографически
-неизменяемым аудитом. Политики хранения, шифрование дисков/резервных копий и
-разграничение доступа по проектам требуют отдельной реализации и настройки.
-[Технический аудит](docs/TECHNICAL_REVIEW.md) содержит открытые ошибки, включая
-ошибки безопасности и восстановления; промышленная готовность пока не заявляется.
-
-<a id="value"></a>
-
-## 05 · Почему мы выбрали этот подход
-
-Сильная сторона MEET-BOX — **единый путь от локального источника до исправленного
-документа**. Пользователю доступны расшифровка, её основание, решение проверяющего
-и согласованные форматы результата в одном рабочем процессе.
-
-| Трудность исходного процесса | Наше архитектурное решение | Что меняется для пользователя |
-| --- | --- | --- |
-| Ручное восстановление разговора | Локальная расшифровка и структурированный черновик | Секретарь может начать со сверки и исправления подготовленного материала. |
-| Спор о том, кто и что обещал | Цитаты, временные метки и явное сопоставление голосов с людьми | Основание поручения можно найти в исходном обсуждении. |
-| Ошибка в ответственном или сроке | Редактирование, отклонение и восстановление пропущенных поручений | Секретарь управляет содержимым протокола и сохраняет решение о правке. |
-| Расхождение между таблицей и документом | Экспорт PDF/DOCX/JSON/CSV/ICS из одной версии | Один набор проверенных полей используется в нескольких форматах передачи. |
-| Запрет на передачу обсуждений во внешние AI API | Собственные station и inference worker | Обработка вписывается в требование закрытого контура. |
-| Сложная вычислительная нагрузка в переговорной | Разделение компактной станции и отдельного worker | Место записи и вычислительные ресурсы можно подбирать независимо. |
-
-Мы развиваем существующий проект: добавлены исправления и восстановление
-поручений, история ревью, согласованные версии документов и самостоятельный
-локальный запуск. Код моделей и исходные компоненты указаны в
-[ATTRIBUTION.md](docs/ATTRIBUTION.md). Эффект на время работы секретаря и точность
-распознавания требует отдельного измерения на согласованном наборе встреч.
-
-**Следующий этап после исправления ошибок:** формальный выпуск протокола,
-персональные роли, жизненный цикл поручений и внутренние напоминания, подтверждённые
-связи между совещаниями. Текущий ICS — экспорт календарных задач; он не запускает
-службу доставки напоминаний. Полная интеграция с СЭД находится за пределами
-обязательной части кейса.
-
-<a id="start"></a>
-
-## 06 · Воспроизвести на одном компьютере
-
-Все команды выполняются из корня этого репозитория. Для базового приложения
-нужны macOS/Linux, Python 3.11+ и Node 22.12+; для окружения моделей описан путь
-на Python 3.12. Radxa, Go, Docker и платные API для этого запуска не требуются.
-
-### Шаг 1. Установить зависимости и собрать интерфейс
-
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements/validation.lock
-npm --prefix web/frontend ci --ignore-scripts
-VITE_MEETING_STATION=true VITE_MEETING_LOCAL=true npm --prefix web/frontend run build
-.venv/bin/python scripts/run-local.py init
-```
-
-### Шаг 2. Подготовить модели и конфигурацию
-
-По [MODEL_SETUP.md](docs/MODEL_SETUP.md) установите FFmpeg, whisper.cpp с
-многоязычной моделью, модели диаризации Sherpa ONNX и локальную модель Ollama.
-Укажите пути в `.local/single-machine/config.json`, включите диаризацию для
-кейса и запустите Ollama согласно инструкции. Веса не входят в репозиторий;
-launcher сам ничего не устанавливает и не скачивает.
-
-### Шаг 3. Проверить окружение и запустить сервисы
+For the one-computer path, follow the guide to install dependencies, build the interface, initialize configuration and provision models. Then run from the repository root:
 
 ```sh
 .venv/bin/python scripts/run-local.py doctor
 .venv/bin/python scripts/run-local.py start
 ```
 
-Откройте **http://127.0.0.1:8766/meeting-intelligence** и введите station-токен
-из `.local/single-machine/tokens.json`. Worker-токен остаётся на сервере.
-На macOS station-токен можно скопировать без вывода в терминал:
+Open **http://127.0.0.1:8766/meeting-intelligence** and pair with the generated **station** token. Upload a non-sensitive recording, enable speaker separation, check the source passages and inspect the exported PDF/DOCX. Missing models are reported explicitly.
 
-```sh
-.venv/bin/python scripts/run-local.py token | pbcopy
-```
+[Model provisioning and licenses](docs/MODEL_SETUP.md) · [Setup troubleshooting](docs/LOCAL_SETUP.md#checks-and-troubleshooting)
 
-### Шаг 4. Пройти пользовательский сценарий
+## Verification
 
-**Import → Transcript → Review & correct → Save review → Export.** Используйте
-смоделированную или анонимизированную запись; проверьте русский, казахский и
-смешанный режимы на своих контрольных примерах.
+The **23 September 2026 foundation-repair checks** recorded the following results. [Commands, logs and source manifest](docs/verification/foundations-20260923/README.md) identify the tested code and environment.
 
-Для осмотра интерфейса до установки моделей есть явный
-`start --allow-missing-models`. Он показывает недостающие зависимости и не
-подтверждает работу распознавания. Обычный `start` откажется запускать неполную
-конфигурацию. Подробности и устранение ошибок: [LOCAL_SETUP.md](docs/LOCAL_SETUP.md).
-
-<a id="evidence"></a>
-
-## 07 · Проверки, готовность и структура репозитория
-
-Последний полный прогон: **33 теста harness, 171 backend/HTTP-тест, два браузерных
-сценария, сборка frontend и lint — пройдены**.
-[Машиночитаемый результат и исходные логи](docs/verification/review-20260923/verification-20260923T102002343181Z-2628c8.json).
-Браузерные проверки сохраняют исправления, перезагружают страницу, скачивают
-DOCX/PDF и независимо проверяют их содержимое. При подготовке этого README
-дополнительно сняты четыре экрана и проверено сохранение версии после перезагрузки
-[на синтетическом примере](docs/assets/readme/capture-receipt.json).
-
-```sh
-make check    # Структура и регрессии harness
-make verify   # Настроенные проверки приложения и реального интерфейса
-```
-
-Для браузерных проверок один раз установите тестовый Chromium в локальный каталог
-(эта команда скачивает браузер, а не модели):
-
-```sh
-PLAYWRIGHT_BROWSERS_PATH="$PWD/.local/browsers" web/frontend/node_modules/.bin/playwright install chromium --only-shell
-```
-
-На Linux также нужны системные зависимости браузера; их установка показана в
-[CI workflow](.github/workflows/submission-checks.yml). Подробнее о проверках —
-[DEVELOPMENT.md](docs/DEVELOPMENT.md).
-Эти результаты не измеряют ASR и качество моделей. **RU/KZ/смешанная речь,
-диаризация, скорость полного цикла, работа при отключённой внешней сети и
-восстановление физического устройства ещё требуют отдельного приёмочного прогона.**
-Открытые дефекты и порядок исправления: [TECHNICAL_REVIEW.md](docs/TECHNICAL_REVIEW.md).
-
-| Каталог | Ответственность |
+| Check | Recorded result |
 | --- | --- |
-| [`web/frontend/`](web/frontend/) | React/Vite: импорт, источники, ревью, экспорт. |
-| [`station/`](station/) | Авторизация станции, архив, очередь и обмен с worker. |
-| [`mac-worker/`](mac-worker/) | Локальные модели, обработка, версии и генерация документов. |
-| [`scripts/`](scripts/) | Запуск, диагностика, проверки и упаковка исходников. |
-| [`docs/`](docs/README.md) | Архитектура, настройка, требования, доказательства и аудит. |
+| Station and worker tests | **237 passed** |
+| Browser regressions | **33 passed** |
+| Real local review/export workflows | **2 passed**, including independent PDF/DOCX content checks |
+| Retained Python / native / harness suites | **95 / 16 / 34 passed** |
+| Retained Go implementation | Full **race test suite passed** |
+| Frontend | Station and retained builds passed; lint passed |
 
-Сохранённые appliance-, Go- и native-компоненты описаны отдельно в
-[карте исторических компонентов](docs/history/README.md); они не требуются
-для запуска через импорт на одном компьютере.
+Reproduce with `make verify`; the retained entry points additionally use `make verify-go` and `make verify-native` on macOS. Dependencies and test Chromium must already be installed. These checks exercise application behavior with synthetic data and simulated inference; they do not measure multilingual recognition quality.
 
-[Архитектура](docs/ARCHITECTURE.md) · [Покрытие требований](docs/REQUIREMENTS.md) ·
-[Разработка](docs/DEVELOPMENT.md) · [Текущее состояние](docs/HANDOFF.md) ·
-[Атрибуция](docs/ATTRIBUTION.md) · [MIT license](LICENSE)
+<details>
+<summary><strong>Earlier physical-device measurements · 11 September 2026</strong></summary>
+
+| Recorded check | Result |
+| --- | --- |
+| 120-second synthetic English recording → local processing → four exports, through HTTPS, mTLS and encrypted storage | **62.567 seconds** |
+| Radxa reboot → website, archive, worker link and meeting browser restored | **80.745 seconds**; saved PDF unchanged |
+| TLS negative checks | Missing certificate, untrusted CA, wrong server name and wrong certificate purpose rejected |
+
+These are historical results on the two devices above, not a fresh measurement of the current repair tree. A clean English fixture and a single timed run do not establish Russian/Kazakh accuracy or long-meeting throughput.
+
+[Hardware validation log](docs/VALIDATION.md) · [Security measurements](docs/SECURITY.md#verified-boundaries-and-remaining-limits) · [Recognition measurements](docs/ACCURACY.md)
+
+</details>
+
+## What still needs validation
+
+Representative Russian, Kazakh and mixed-speech evaluation, overlapping voices, and an inference run with the internet physically disconnected remain open. Speaker labels distinguish voices; a person must confirm their names. Google Meet capture is documented in the earlier hardware log; live Zoom and Teams admission remain unverified.
+
+In-app corrections, revision history and PDF/DOCX export are implemented. Formal issuance, personal access roles, automatic reminders, cross-meeting task tracking and document-management integration remain future work. Calendar export creates a file; it does not send notifications.
+
+[Full case map](docs/REQUIREMENTS.md) · [72-finding repair register](docs/FOUNDATION_FIXES.md) · [Submission evidence](docs/SUBMISSION_NOTES.md)
+
+## License and attribution
+
+[MIT](LICENSE). Meeting Station builds on the Scriberr backend foundations and retains their copyright and license notices. The station, local worker and review workflow are described in the [contribution and attribution record](docs/ATTRIBUTION.md). Model and artwork licenses apply separately. Samruk-Kazyna branding identifies the hackathon case owner.
+
+For a trial or installation question, open an issue with the meeting languages and equipment you need to support. Keep recordings, transcripts and credentials out of public issues.

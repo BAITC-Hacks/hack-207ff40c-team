@@ -3,8 +3,10 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/gin-gonic/gin"
@@ -69,8 +71,8 @@ const installScriptTemplate = `#!/bin/bash
 
 set -e
 
-SERVER_URL="{{.ServerURL}}"
-TOKEN="{{.Token}}"
+SERVER_URL={{shellQuote .ServerURL}}
+TOKEN={{shellQuote .Token}}
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="scriberr"
 
@@ -93,7 +95,7 @@ echo "Detected OS: $OS, Arch: $ARCH"
 DOWNLOAD_URL="$SERVER_URL/api/v1/cli/download?os=$OS&arch=$ARCH"
 
 echo "Downloading CLI from $DOWNLOAD_URL..."
-curl -sL "$DOWNLOAD_URL" -o "$BINARY_NAME"
+curl --fail --show-error --silent --location --max-time 120 "$DOWNLOAD_URL" -o "$BINARY_NAME"
 
 chmod +x "$BINARY_NAME"
 
@@ -122,7 +124,7 @@ echo "Successfully installed $BINARY_NAME to $INSTALL_DIR/$BINARY_NAME"
 # Configure if token provided
 if [ -n "$TOKEN" ]; then
     echo "Configuring CLI with provided token..."
-    "$INSTALL_DIR/$BINARY_NAME" login --server "$SERVER_URL" --token-only "$TOKEN"
+    printf '%s' "$TOKEN" | "$INSTALL_DIR/$BINARY_NAME" login --server "$SERVER_URL" --token-stdin
     echo "Configuration saved."
 else
     echo "Please run '$BINARY_NAME login' to authenticate."
@@ -143,16 +145,16 @@ func (h *Handler) GetInstallScript(c *gin.Context) {
 	}
 	host := c.Request.Host
 
-	// If behind a proxy (common in prod), use X-Forwarded-Proto/Host
-	if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
-		scheme = proto
-	}
-	if forwardedHost := c.GetHeader("X-Forwarded-Host"); forwardedHost != "" {
-		host = forwardedHost
-	}
+	// Forwarded host/proto are caller-controlled unless a deployment explicitly
+	// authenticates its proxy. Use the actual request origin; shell-quote it too.
 	serverURL := fmt.Sprintf("%s://%s", scheme, host)
+	parsed, parseErr := url.Parse(serverURL)
+	if parseErr != nil || parsed.Hostname() == "" || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || strings.ContainsAny(host, "\r\n\x00") || len(token) > 16384 {
+		c.String(http.StatusBadRequest, "Invalid installation origin or token")
+		return
+	}
 
-	tmpl, err := template.New("install").Parse(installScriptTemplate)
+	tmpl, err := template.New("install").Funcs(template.FuncMap{"shellQuote": shellQuote}).Parse(installScriptTemplate)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to parse template")
 		return
@@ -167,5 +169,10 @@ func (h *Handler) GetInstallScript(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/x-shellscript")
+	c.Header("Cache-Control", "no-store")
 	_ = tmpl.Execute(c.Writer, data)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }

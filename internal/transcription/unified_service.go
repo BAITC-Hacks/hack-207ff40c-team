@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"scriberr/internal/models"
@@ -41,17 +42,18 @@ const (
 
 // UnifiedTranscriptionService provides a unified interface for all transcription and diarization models
 type UnifiedTranscriptionService struct {
-	registry              *registry.ModelRegistry
-	pipeline              *pipeline.ProcessingPipeline
-	preprocessors         map[string]interfaces.Preprocessor
-	postprocessors        map[string]interfaces.Postprocessor
-	tempDirectory         string
-	outputDirectory       string
-	defaultModelIDs       map[string]string      // Default model IDs for each task type
-	multiTrackTranscriber *MultiTrackTranscriber // For termination support
-	jobRepo               repository.JobRepository
-	webhookService        *webhook.Service
-	broadcaster           *sse.Broadcaster
+	registry               *registry.ModelRegistry
+	pipeline               *pipeline.ProcessingPipeline
+	preprocessors          map[string]interfaces.Preprocessor
+	postprocessors         map[string]interfaces.Postprocessor
+	tempDirectory          string
+	outputDirectory        string
+	defaultModelIDs        map[string]string // Default model IDs for each task type
+	multiTrackTranscribers map[string]*MultiTrackTranscriber
+	multiTrackMutex        sync.RWMutex
+	jobRepo                repository.JobRepository
+	webhookService         *webhook.Service
+	broadcaster            *sse.Broadcaster
 }
 
 // NewUnifiedTranscriptionService creates a new unified transcription service
@@ -67,8 +69,9 @@ func NewUnifiedTranscriptionService(jobRepo repository.JobRepository, tempDir, o
 			"transcription": ModelWhisperX,
 			"diarization":   ModelPyannote,
 		},
-		jobRepo:        jobRepo,
-		webhookService: webhook.NewService(),
+		jobRepo:                jobRepo,
+		webhookService:         webhook.NewService(),
+		multiTrackTranscribers: make(map[string]*MultiTrackTranscriber),
 	}
 }
 
@@ -154,6 +157,15 @@ func (u *UnifiedTranscriptionService) ProcessJob(ctx context.Context, jobID stri
 			})
 		}
 
+		// Read after result commit; the pre-inference object has a stale transcript.
+		if status == models.StatusCompleted {
+			committed, err := u.jobRepo.FindWithAssociations(ctx, job.ID)
+			if err != nil {
+				logger.Error("Cannot read committed webhook result", "job_id", job.ID, "error", err)
+				return
+			}
+			job = committed
+		}
 		// Trigger webhook if callback URL is present
 		if job.Parameters.CallbackURL != nil && *job.Parameters.CallbackURL != "" {
 			payload := webhook.WebhookPayload{
@@ -343,14 +355,18 @@ func (u *UnifiedTranscriptionService) processSingleTrackJob(ctx context.Context,
 func (u *UnifiedTranscriptionService) processMultiTrackJob(ctx context.Context, job *models.TranscriptionJob) error {
 	logger.Info("Processing multi-track job", "job_id", job.ID, "track_count", len(job.MultiTrackFiles))
 
-	// Create unified processor for this service
-	unifiedProcessor := &UnifiedJobProcessor{
-		unifiedService: u,
-	}
-
-	// Create multi-track transcriber with unified processor and store reference for termination
-	transcriber := NewMultiTrackTranscriber(unifiedProcessor)
-	u.multiTrackTranscriber = transcriber
+	// The parent processor already holds admission. Tracks run sequentially in
+	// that slot; constructing another processor would either have no semaphore
+	// or deadlock trying to reacquire the single available slot.
+	transcriber := NewMultiTrackTranscriber(admittedTrackProcessor{service: u})
+	u.multiTrackMutex.Lock()
+	u.multiTrackTranscribers[job.ID] = transcriber
+	u.multiTrackMutex.Unlock()
+	defer func() {
+		u.multiTrackMutex.Lock()
+		delete(u.multiTrackTranscribers, job.ID)
+		u.multiTrackMutex.Unlock()
+	}()
 
 	// Process the multi-track transcription
 	return transcriber.ProcessMultiTrackTranscription(ctx, job.ID)
@@ -358,10 +374,13 @@ func (u *UnifiedTranscriptionService) processMultiTrackJob(ctx context.Context, 
 
 // TerminateMultiTrackJob terminates a multi-track job and all its individual track jobs
 func (u *UnifiedTranscriptionService) TerminateMultiTrackJob(jobID string) error {
-	if u.multiTrackTranscriber == nil {
+	u.multiTrackMutex.RLock()
+	transcriber := u.multiTrackTranscribers[jobID]
+	u.multiTrackMutex.RUnlock()
+	if transcriber == nil {
 		return fmt.Errorf("no multi-track transcriber available")
 	}
-	return u.multiTrackTranscriber.TerminateMultiTrackJob(jobID)
+	return transcriber.TerminateMultiTrackJob(jobID)
 }
 
 // IsMultiTrackJob checks if a job is a multi-track job
@@ -595,13 +614,13 @@ func (u *UnifiedTranscriptionService) convertToOpenAIParams(params models.Whispe
 
 // convertToVoxtralParams converts to Voxtral-specific parameters
 func (u *UnifiedTranscriptionService) convertToVoxtralParams(params models.WhisperXParams) map[string]interface{} {
-	paramMap := map[string]interface{}{}
+	paramMap := map[string]interface{}{"device": params.Device}
 
 	// Language
 	if params.Language != nil {
 		paramMap["language"] = *params.Language
 	} else {
-		paramMap["language"] = "en"
+		paramMap["language"] = "auto"
 	}
 
 	// Max new tokens
@@ -712,7 +731,7 @@ func (u *UnifiedTranscriptionService) convertToPyannoteParams(params models.Whis
 	paramMap := map[string]interface{}{
 		"output_format":      OutputFormatJSON,
 		"auto_convert_audio": true,
-		"device":             "auto",
+		"device":             params.Device,
 	}
 
 	if params.MinSpeakers != nil {
@@ -739,11 +758,11 @@ func (u *UnifiedTranscriptionService) convertToPyannoteParams(params models.Whis
 
 // convertToSortformerParams converts to Sortformer-specific parameters
 func (u *UnifiedTranscriptionService) convertToSortformerParams(params models.WhisperXParams) map[string]interface{} {
-	return map[string]interface{}{
-		"output_format":      OutputFormatJSON,
-		"auto_convert_audio": true,
-		// Sortformer is optimized for 4 speakers, no additional config needed
+	maximum := 4
+	if params.MaxSpeakers != nil {
+		maximum = *params.MaxSpeakers
 	}
+	return map[string]interface{}{"output_format": OutputFormatJSON, "auto_convert_audio": true, "device": params.Device, "max_speakers": maximum}
 }
 
 func (u *UnifiedTranscriptionService) parametersToMap(params models.WhisperXParams) map[string]interface{} {

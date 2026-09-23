@@ -1,3 +1,4 @@
+import { downloadRecording } from '@/lib/downloadRecording';
 import { useState, useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RecordPlugin from "wavesurfer.js/dist/plugins/record.js";
@@ -30,7 +31,7 @@ import {
 interface AudioRecorderProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onRecordingComplete: (blob: Blob, title: string) => void;
+	onRecordingComplete: (blob: Blob, title: string) => Promise<void>;
 }
 
 export function AudioRecorder({
@@ -52,6 +53,7 @@ export function AudioRecorder({
 	const [isUploading, setIsUploading] = useState(false);
 
 	const micContainerRef = useRef<HTMLDivElement>(null);
+    const discardRecordingRef = useRef(false);
 
 	// Initialize WaveSurfer and RecordPlugin when dialog opens
 	useEffect(() => {
@@ -107,7 +109,7 @@ export function AudioRecorder({
 
 				// Handle recording end and progress events
 				recordPlugin.on("record-end", (blob: Blob) => {
-					setRecordedBlob(blob);
+					if (!discardRecordingRef.current) setRecordedBlob(blob);
 					setIsRecording(false);
 					setIsPaused(false);
 				});
@@ -195,6 +197,7 @@ export function AudioRecorder({
 				channelCount: 1,
 			};
 
+            discardRecordingRef.current = false;
 			await record.startRecording(constraints);
 			setIsRecording(true);
 			setIsPaused(false);
@@ -251,7 +254,7 @@ export function AudioRecorder({
 			onClose();
 		} catch (error) {
 			console.error("Failed to upload recording:", error);
-			alert("Failed to upload recording");
+			alert("Upload failed. Your recording is kept here. Retry the upload or download a local copy.");
 		} finally {
 			setIsUploading(false);
 		}
@@ -259,6 +262,11 @@ export function AudioRecorder({
 
 	// Handle dialog close
 	const handleClose = () => {
+		if (isUploading) return;
+		if ((isRecording || recordedBlob) && !window.confirm(isRecording
+            ? "Stop and discard the current recording? Choose Cancel, then Stop to keep and download it."
+            : "Discard this unsaved recording? Download it first if you need a local copy.")) return;
+		discardRecordingRef.current = true;
 		if (isRecording) {
 			stopRecording();
 		}
@@ -408,6 +416,7 @@ export function AudioRecorder({
 						{!isRecording && !recordedBlob && (
 							<Button
 								onClick={startRecording}
+                                disabled={!record}
 								size="lg"
 								className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105"
 							>
@@ -472,6 +481,7 @@ export function AudioRecorder({
 					{recordedBlob && (
 						<div className="text-center text-sm text-green-600 dark:text-green-400">
 							✓ Recording completed! Review and upload when ready.
+                            <Button variant="outline" onClick={() => downloadRecording(recordedBlob, title)}>Download recording</Button>
 						</div>
 					)}
 				</div>

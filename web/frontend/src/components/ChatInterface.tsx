@@ -3,7 +3,6 @@ import { Send, User, MessageCircle, Copy, Check, Sparkles, Brain, ChevronDown } 
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
-import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight'
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,6 +10,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useChatEvents } from "../contexts/ChatEventsContext";
 import { useToast } from "./ui/toast";
 import { cn } from "@/lib/utils";
+import { privateMarkdownComponents } from "@/lib/markdownPolicy";
 
 // Helper function to parse thinking content from model responses
 function parseThinkingContent(content: string): { thinking: string | null; response: string } {
@@ -333,11 +333,12 @@ export const ChatInterface = memo(function ChatInterface({ transcriptionId, acti
         return [...prev, assistantMessage];
       });
 
+      const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) { assistantContent += decoder.decode(); break; }
 
-        const chunk = new TextDecoder().decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         assistantContent += chunk;
 
         // Update message content while streaming
@@ -583,11 +584,12 @@ export const ChatInterface = memo(function ChatInterface({ transcriptionId, acti
                                       {hasResponse && (
                                         <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed font-reading">
                                           <ReactMarkdown
+                                            skipHtml
                                             remarkPlugins={[remarkMath]}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            rehypePlugins={[rehypeRaw as any, rehypeKatex as any, rehypeHighlight as any]}
+                                            rehypePlugins={[rehypeKatex as any, rehypeHighlight as any]}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            components={{ pre: PreBlock as any }}
+                                            components={{ ...privateMarkdownComponents, pre: PreBlock as any }}
                                           >
                                             {response}
                                           </ReactMarkdown>
@@ -601,11 +603,12 @@ export const ChatInterface = memo(function ChatInterface({ transcriptionId, acti
                                       {!thinking && !showThinkingStream && !hasResponse && isCurrentlyStreaming && message.content.length > 0 && (
                                         <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed font-reading">
                                           <ReactMarkdown
+                                            skipHtml
                                             remarkPlugins={[remarkMath]}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            rehypePlugins={[rehypeRaw as any, rehypeKatex as any, rehypeHighlight as any]}
+                                            rehypePlugins={[rehypeKatex as any, rehypeHighlight as any]}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            components={{ pre: PreBlock as any }}
+                                            components={{ ...privateMarkdownComponents, pre: PreBlock as any }}
                                           >
                                             {message.content}
                                           </ReactMarkdown>

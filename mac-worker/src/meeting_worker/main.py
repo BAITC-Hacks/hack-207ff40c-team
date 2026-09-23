@@ -23,6 +23,7 @@ from .schemas import JobManifest, JobRecord, JobResult, JobStage, ReviewRequest
 from .review import ReviewError, save_review
 from .store import JobStore
 from .asr import capabilities as asr_capabilities
+from .bundle import sync_directory
 
 
 class Boundary:
@@ -78,20 +79,38 @@ def create_app(config: Settings | None = None, pipeline_factory=Pipeline, start_
         app.state.store, app.state.pipeline = store, pipeline
         app.state.submission_lock = asyncio.Lock()
         app.state.review_lock = threading.Lock()
+        app.state.worker_error = None
         stopping = asyncio.Event()
         async def work():
+            failures = 0
             while not stopping.is_set():
-                job = await asyncio.to_thread(store.claim)
-                if job:
-                    await asyncio.to_thread(pipeline.run, job.id)
-                else:
+                job = None
+                try:
+                    job = await asyncio.to_thread(store.claim)
+                    app.state.worker_error = None
+                    if job:
+                        await asyncio.to_thread(pipeline.run, job.id)
+                    failures = 0
+                except Exception as exc:
+                    # Keep the consumer alive on transient DB/filesystem failures.
+                    # Health must expose persistent failure without leaking content.
+                    app.state.worker_error = type(exc).__name__
+                    failures += 1
+                    if job:
+                        with contextlib.suppress(Exception):
+                            await asyncio.to_thread(store.update, job.id, JobStage.FAILED,
+                                error_code='WORKER_ERROR', error_message='Processing was interrupted; the saved source can be retried.')
+                if not job or failures:
                     with contextlib.suppress(asyncio.TimeoutError):
-                        await asyncio.wait_for(stopping.wait(), 0.25)
+                        await asyncio.wait_for(stopping.wait(), min(5, 0.25 * 2 ** min(failures, 5)))
         task = asyncio.create_task(work()) if start_worker else None
+        app.state.worker_task = task
         try:
             yield
         finally:
             stopping.set()
+            if hasattr(pipeline, 'stop'):
+                pipeline.stop()
             if task:
                 await task
             fcntl.flock(lock, fcntl.LOCK_UN)
@@ -110,6 +129,8 @@ def create_app(config: Settings | None = None, pipeline_factory=Pipeline, start_
 
     @app.get('/health')
     def health():
+        if start_worker and (app.state.worker_error or app.state.worker_task.done()):
+            return JSONResponse({'status': 'degraded', 'version': __version__, 'detail': 'Queue consumer unavailable; saved sources are retained'}, status_code=503)
         return {'status': 'ok', 'version': __version__}
 
     @app.get('/v1/capabilities')
@@ -127,6 +148,8 @@ def create_app(config: Settings | None = None, pipeline_factory=Pipeline, start_
     async def create_job(manifest_json: str = Form(...), audio: UploadFile | None = File(default=None),
                          transcript: str | None = Form(default=None),
                          idempotency_key: str | None = Header(default=None, alias='Idempotency-Key')) -> JobRecord:
+        if start_worker and (app.state.worker_error or app.state.worker_task.done()):
+            raise HTTPException(503, 'Queue consumer unavailable; retry when worker health recovers')
         if (audio is None) == (transcript is None):
             raise HTTPException(400, 'Provide exactly one of audio or transcript')
         if len(manifest_json) > 16384:
@@ -169,6 +192,8 @@ def create_app(config: Settings | None = None, pipeline_factory=Pipeline, start_
                 source = config.data_dir / 'sources' / (job_id + suffix)
                 path.replace(source)
                 path = source
+                # fsync(file) alone does not make its renamed directory entry durable.
+                sync_directory(source.parent)
                 now = datetime.now(UTC)
                 job = JobRecord(id=job_id, meeting_id=manifest.meeting_id, stage=JobStage.QUEUED,
                     source_kind=kind, source_path=str(source), source_sha256=digest.hexdigest(),

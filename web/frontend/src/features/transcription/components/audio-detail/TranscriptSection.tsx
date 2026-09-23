@@ -61,7 +61,7 @@ export function TranscriptSection({
 
     // Data hooks
     const { data: notes = [] } = useNotes(audioId);
-    const { mutate: createNote } = useCreateNote(audioId);
+    const { mutateAsync: createNote } = useCreateNote(audioId);
     const { mutateAsync: updateNote } = useUpdateNote(audioId);
     const { mutateAsync: deleteNote } = useDeleteNote(audioId);
 
@@ -136,9 +136,9 @@ export function TranscriptSection({
         return Array.from(speakers).sort();
     };
 
-    const handleSaveNote = (content: string) => {
+    const handleSaveNote = async (content: string) => {
         if (menuState) {
-            createNote({
+            await createNote({
                 start_time: menuState.startTime,
                 end_time: menuState.endTime,
                 content: content,
@@ -146,8 +146,6 @@ export function TranscriptSection({
                 start_word_index: menuState.startIdx,
                 end_word_index: menuState.endIdx
             });
-            closeEditor();
-            setNotesOpen(true);
         }
     };
 
@@ -236,6 +234,7 @@ export function TranscriptSection({
                         quote={menuState?.selectedText || ""}
                         position={menuState ? { x: menuState.x, y: menuState.y } : { x: 0, y: 0 }}
                         onSave={handleSaveNote}
+                        onSaved={() => { closeEditor(); setNotesOpen(true); }}
                         onCancel={closeEditor}
                     />
 

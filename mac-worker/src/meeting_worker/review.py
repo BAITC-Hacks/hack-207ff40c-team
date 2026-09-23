@@ -7,7 +7,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .bundle import sync_directory, write_exports
+from .bundle import result_bytes, sync_directory, write_exports
 from .protocol import derive_summary
 from .schemas import ActionItem, Evidence, JobResult, JobStage, ReviewRequest
 
@@ -144,10 +144,15 @@ def save_review(config, store, job_id: str, request: ReviewRequest) -> JobResult
     temporary = path.with_suffix(".partial")
     published = False
     try:
-        result.exports = write_exports(directory, result.protocol, result.transcript, config.pdf_font or None)
+        result.exports = {kind: str(directory / ('meeting.' + kind)) for kind in ('json', 'csv', 'pdf', 'docx', 'ics')}
         result.job = job.model_copy(update={"result_path": str(path), "updated_at": datetime.now(UTC)})
-        with temporary.open("w", encoding="utf-8") as stream:
-            stream.write(result.model_dump_json(indent=2))
+        try:
+            encoded = result_bytes(result)
+        except ValueError as exc:
+            raise ReviewError('This review would exceed the 16 MiB report limit. Use shorter supporting passages or fewer changes; the previous revision remains available', 413) from exc
+        result.exports = write_exports(directory, result.protocol, result.transcript, config.pdf_font or None)
+        with temporary.open("wb") as stream:
+            stream.write(encoded)
             stream.flush()
             os.fsync(stream.fileno())
         temporary.chmod(0o600)

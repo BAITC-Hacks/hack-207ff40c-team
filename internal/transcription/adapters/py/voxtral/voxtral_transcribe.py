@@ -15,7 +15,7 @@ from transformers import VoxtralForConditionalGeneration, AutoProcessor
 def transcribe_audio(
     audio_path: str,
     output_path: str,
-    language: str = "en",
+    language: str = "auto",
     model_id: str = "mistralai/Voxtral-mini",
     device: str = "auto",
     max_new_tokens: int = 8192,
@@ -35,9 +35,12 @@ def transcribe_audio(
         Dictionary containing transcription results
     """
     # Determine device
-    # if device == "auto":
-    #     device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device not in {"auto", "cpu", "cuda"}:
+        raise ValueError("Device must be cpu, cuda or auto")
+    if device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA requested but unavailable")
 
     print(f"Loading Voxtral model on {device}...", file=sys.stderr)
 
@@ -56,9 +59,12 @@ def transcribe_audio(
     print(f"Model loaded successfully", file=sys.stderr)
     print(f"Processing audio: {audio_path}", file=sys.stderr)
 
+    # Transformers requires the language argument; [None] forwards a single
+    # unconditioned request to mistral-common instead of silently selecting English.
+    # See transformers/models/voxtral/processing_voxtral.py:apply_transcription_request.
     # Prepare transcription request using the proper method
     inputs = processor.apply_transcription_request(
-        language=language, audio=audio_path, model_id=model_id
+        language=[None] if language == "auto" else language, audio=audio_path, model_id=model_id
     )
 
     # Move inputs to device with correct dtype
@@ -117,7 +123,7 @@ def main():
     parser.add_argument("audio_path", type=str, help="Path to input audio file")
     parser.add_argument("output_path", type=str, help="Path to output JSON file")
     parser.add_argument(
-        "--language", type=str, default="en", help="Language code (default: en)"
+        "--language", type=str, default="auto", help="Language code or auto (default: auto)"
     )
     parser.add_argument(
         "--model-id",

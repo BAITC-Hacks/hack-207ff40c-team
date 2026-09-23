@@ -58,7 +58,28 @@ func SaveConfig(serverURL, token, watchFolder string) (string, error) {
 		return "", err
 	}
 	configPath := filepath.Join(home, ".scriberr.yaml")
-	return configPath, viper.WriteConfigAs(configPath)
+	if cfgFile != "" {
+		configPath = cfgFile
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(configPath), ".scriberr-*.yaml")
+	if err != nil {
+		return "", err
+	}
+	name := temporary.Name()
+	defer os.Remove(name)
+	if err := temporary.Close(); err != nil {
+		return "", err
+	}
+	if err := viper.WriteConfigAs(name); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(name, 0600); err != nil {
+		return "", err
+	}
+	if err := os.Rename(name, configPath); err != nil {
+		return "", err
+	}
+	return configPath, nil
 }
 
 // GetConfig returns the current configuration

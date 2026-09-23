@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import subprocess
 import threading
 import os
 import wave
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .asr import get_adapter
 from .config import Settings
-from .bundle import sync_directory, write_exports
-from .diarization import diarize
-from .protocol import call_ollama, validate_evidence
+from .bundle import result_bytes, sync_directory, write_exports
+from .protocol import call_ollama
 from .schemas import (
     JobRecord, JobResult, JobStage, MeetingMetadata, Transcript, TranscriptSegment,
 )
 from .store import JobStore
-from .local_audio import command
+from .local_audio import ProcessingCancelled, command
+from .model_process import run_model
 
 
 def _text_transcript(path: Path, language: str) -> Transcript:
@@ -36,6 +34,18 @@ class Pipeline:
         # One heavy model job at a time prevents unified-memory exhaustion on a MacBook Air.
         self._inference_lock = threading.Lock()
         self.active_job: str | None = None
+        self._stopping = threading.Event()
+
+    def stop(self):
+        self._stopping.set()
+
+    def cancelled(self, job_id):
+        job = self.store.get(job_id)
+        return self._stopping.is_set() or job is None or job.stage == JobStage.CANCELLED
+
+    def check_cancelled(self, job_id):
+        if self.cancelled(job_id):
+            raise ProcessingCancelled('Processing stopped; saved source can be retried')
 
     def run(self, job_id: str) -> None:
         with self._inference_lock:
@@ -51,32 +61,42 @@ class Pipeline:
             return
         try:
             source = Path(job.source_path)
+            self.check_cancelled(job.id)
             if job.source_kind == "text":
                 transcript = _text_transcript(source, job.manifest.language_mode)
             else:
+                profile = self.config.asr_en if job.manifest.language_mode == "en" else self.config.asr_kk_ru
+                if job.manifest.diarization and profile == 'gigaam':
+                    raise RuntimeError('GigaAM currently has no timed segment contract. Select whisper-cpp, shyngys or mlx-distil-whisper for diarization')
                 job = self.store.update(job.id, JobStage.PREPROCESSING)
                 wav = self.config.data_dir / "work" / f"{job.id}.wav"
                 command([self.config.ffmpeg_binary, "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                     "-protocol_whitelist", "file,pipe", "-format_whitelist", "wav,mp3,mov,matroska,webm,ogg,caf,flac",
                     "-i", str(source), "-map", "0:a:0", "-vn", "-t", str(self.config.max_audio_seconds + 1),
                     "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(wav)],
-                    self.config.data_dir / "work", min(300, self.config.audio_timeout))
+                    self.config.data_dir / "work", min(300, self.config.audio_timeout),
+                    cancelled=lambda: self.cancelled(job.id))
                 with wave.open(str(wav), "rb") as audio:
                     duration = audio.getnframes() / audio.getframerate()
                 if duration <= 0 or duration > self.config.max_audio_seconds:
                     raise RuntimeError("Audio is empty or exceeds the configured duration limit")
+                self.check_cancelled(job.id)
                 job = self.store.update(job.id, JobStage.TRANSCRIBING)
-                profile = self.config.asr_en if job.manifest.language_mode == "en" else self.config.asr_kk_ru
                 language = job.manifest.language_mode if job.manifest.language_mode in {"en", "ru", "kk"} else "auto"
                 asr_config = self.config.model_copy(update={"whisper_prompt": job.manifest.vocabulary})
-                transcript = get_adapter(profile, asr_config).transcribe(wav, language)
+                transcript = run_model('asr', asr_config, wav, profile=profile, language=language,
+                                       cancelled=lambda: self.cancelled(job.id))
 
+                self.check_cancelled(job.id)
                 if job.manifest.diarization:
                     if not self.config.enable_diarization:
                         raise RuntimeError("Diarization was requested but is disabled on this worker")
                     job = self.store.update(job.id, JobStage.DIARIZING)
-                    transcript = diarize(wav, transcript, self.config, job.manifest.min_speakers, job.manifest.max_speakers)
+                    transcript = run_model('diarize', self.config, wav, transcript=transcript,
+                        min_speakers=job.manifest.min_speakers, max_speakers=job.manifest.max_speakers,
+                        cancelled=lambda: self.cancelled(job.id))
 
+            self.check_cancelled(job.id)
             transcript_path = self.config.data_dir / "work" / f"{job.id}.transcript.json"
             transcript_path.write_text(transcript.model_dump_json(indent=2), encoding="utf-8")
             transcript_path.chmod(0o600)
@@ -84,6 +104,7 @@ class Pipeline:
                 return
             job = self.store.update(job.id, JobStage.EXTRACTING)
             protocol = call_ollama(transcript, job.manifest, self.config)
+            self.check_cancelled(job.id)
             job = self.store.update(job.id, JobStage.VALIDATING)
             protocol.metadata = MeetingMetadata(
                 meeting_id=job.id,
@@ -113,9 +134,10 @@ class Pipeline:
                 exports={name: str(path) for name, path in paths.items()},
             )
             temporary = result_path.with_suffix(".partial")
-            with temporary.open("w", encoding="utf-8") as output:
+            self.check_cancelled(job.id)
+            with temporary.open("wb") as output:
                 temporary.chmod(0o600)
-                output.write(result.model_dump_json(indent=2))
+                output.write(result_bytes(result))
                 output.flush()
                 os.fsync(output.fileno())
             temporary.replace(result_path)

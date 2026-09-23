@@ -1,0 +1,129 @@
+{
+  "all_passed": true,
+  "results": [
+    {
+      "name": "harness-structure",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "scripts/harness.py",
+        "check"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.03921400001854636,
+      "log": "verify-20260923T115136509866Z-4b60bb-00.txt"
+    },
+    {
+      "name": "harness-regressions",
+      "kind": "test",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.4714152090018615,
+      "log": "verify-20260923T115136509866Z-4b60bb-01.txt"
+    },
+    {
+      "name": "local-frontend-build",
+      "kind": "build",
+      "argv": [
+        "env",
+        "VITE_MEETING_STATION=true",
+        "VITE_MEETING_LOCAL=true",
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "build"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.013251291005872,
+      "log": "verify-20260923T115136509866Z-4b60bb-02.txt"
+    },
+    {
+      "name": "backend-and-local-http",
+      "kind": "test",
+      "argv": [
+        "env",
+        "MI_RUN_LOCAL_HTTP_TESTS=1",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "station/tests",
+        "mac-worker/tests",
+        "-q"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 9.925496375013608,
+      "log": "verify-20260923T115136509866Z-4b60bb-03.txt"
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "test",
+      "argv": [
+        "npm",
+        "--prefix",
+        "web/frontend",
+        "run",
+        "lint"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.346513833006611,
+      "log": "verify-20260923T115136509866Z-4b60bb-04.txt"
+    },
+    {
+      "name": "adapter-appliance-native-python-regressions",
+      "kind": "test",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-regressions.py",
+        "retained-python"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.6054450839874335,
+      "log": "verify-20260923T115136509866Z-4b60bb-05.txt"
+    },
+    {
+      "name": "frontend-browser-regressions",
+      "kind": "test",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-regressions.py",
+        "frontend"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 52.29303787500248,
+      "log": "verify-20260923T115136509866Z-4b60bb-06.txt"
+    },
+    {
+      "name": "real-browser-review-and-exports",
+      "kind": "smoke",
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check-ui.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 6.466462040989427,
+      "log": "verify-20260923T115136509866Z-4b60bb-07.txt"
+    }
+  ],
+  "warning": "Exit codes alone do not establish that a configured check is meaningful.",
+  "original_report": "reports/verification-20260923T115136509866Z-4b60bb.json",
+  "receipt_note": "Raw command output is unchanged. Log paths/extensions were rebased for the committed documentation copy."
+}

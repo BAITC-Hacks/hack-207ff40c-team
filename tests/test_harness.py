@@ -99,4 +99,15 @@ class HarnessTests(unittest.TestCase):
         harness.write_json(self.root/'checks.json',cfg)
         with self.assertRaises(ValueError): harness.verify(self.root)
 
+    def test_snapshot_includes_model_source_but_not_weights(self):
+        source = self.root/'internal/models/transcription.go'
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text('package models\n')
+        weights = self.root/'models/weights.bin'
+        weights.parent.mkdir()
+        weights.write_bytes(b'fixture')
+        manifest = harness.snapshot(self.root)['sha256']
+        self.assertIn('internal/models/transcription.go', manifest)
+        self.assertNotIn('models/weights.bin', manifest)
+
 if __name__=='__main__': unittest.main()

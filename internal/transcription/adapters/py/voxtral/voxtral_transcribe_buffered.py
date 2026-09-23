@@ -8,6 +8,8 @@ import argparse
 import json
 import sys
 import os
+import math
+import tempfile
 import librosa
 import soundfile as sf
 import torch
@@ -15,14 +17,25 @@ from pathlib import Path
 from transformers import VoxtralForConditionalGeneration, AutoProcessor
 
 
+def positive_chunk_duration(value):
+    duration = float(value)
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("Chunk duration must be finite and positive")
+    return duration
+
+
 def split_audio_file(audio_path, chunk_duration_secs=1500):
     """Split audio file into chunks of specified duration.
 
     Default: 1500 seconds (25 minutes) to stay safely within Voxtral's 30-40 min limit.
     """
+    duration = positive_chunk_duration(chunk_duration_secs)
     audio, sr = librosa.load(audio_path, sr=None, mono=True)
-    total_duration = len(audio) / sr
-    chunk_samples = int(chunk_duration_secs * sr)
+    if not math.isfinite(sr) or sr <= 0:
+        raise ValueError("Audio sample rate must be finite and positive")
+    chunk_samples = int(duration * sr)
+    if chunk_samples < 1:
+        raise ValueError("Chunk duration must contain at least one audio sample")
 
     chunks = []
     for start_sample in range(0, len(audio), chunk_samples):
@@ -43,7 +56,7 @@ def split_audio_file(audio_path, chunk_duration_secs=1500):
 def transcribe_buffered(
     audio_path: str,
     output_file: str,
-    language: str = "en",
+    language: str = "auto",
     model_id: str = "mistralai/Voxtral-mini",
     device: str = "auto",
     max_new_tokens: int = 8192,
@@ -52,10 +65,15 @@ def transcribe_buffered(
     """
     Transcribe long audio by splitting into chunks and merging results.
     """
+    chunks, sr = split_audio_file(audio_path, chunk_duration_secs)
+
     # Determine device
-    # if device == "auto":
-    #     device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device not in {"auto", "cpu", "cuda"}:
+        raise ValueError("Device must be cpu, cuda or auto")
+    if device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA requested but unavailable")
 
     print(f"Loading Voxtral model on {device}...", file=sys.stderr)
 
@@ -74,53 +92,53 @@ def transcribe_buffered(
     print(f"Model loaded successfully", file=sys.stderr)
     print(f"Splitting audio into {chunk_duration_secs}s chunks...", file=sys.stderr)
 
-    chunks, sr = split_audio_file(audio_path, chunk_duration_secs)
     print(f"Created {len(chunks)} chunks", file=sys.stderr)
 
     full_text = []
 
-    for i, chunk_info in enumerate(chunks):
-        print(
-            f"Transcribing chunk {i + 1}/{len(chunks)} (duration: {chunk_info['duration']:.1f}s)...",
-            file=sys.stderr,
-        )
-
-        # Save chunk to temporary file
-        chunk_path = f"/tmp/voxtral_chunk_{i}.wav"
-        sf.write(chunk_path, chunk_info["audio"], sr)
-
-        try:
-            # Prepare transcription request for this chunk
-            inputs = processor.apply_transcription_request(
-                language=language, audio=chunk_path, model_id=model_id
+    with tempfile.TemporaryDirectory(prefix="voxtral-") as chunk_directory:
+        for i, chunk_info in enumerate(chunks):
+            print(
+                f"Transcribing chunk {i + 1}/{len(chunks)} (duration: {chunk_info['duration']:.1f}s)...",
+                file=sys.stderr,
             )
 
-            # Move inputs to device with correct dtype
-            inputs = inputs.to(device, dtype=dtype)
+            # Save chunk to temporary file
+            chunk_path = str(Path(chunk_directory) / f"chunk_{i}.wav")
+            sf.write(chunk_path, chunk_info["audio"], sr)
 
-            # Generate transcription
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=max_new_tokens,
+            try:
+                # Prepare transcription request for this chunk
+                inputs = processor.apply_transcription_request(
+                    language=[None] if language == "auto" else language, audio=chunk_path, model_id=model_id
                 )
 
-            # Decode only the newly generated tokens (skip the input prompt)
-            decoded_outputs = processor.batch_decode(
-                outputs[:, inputs.input_ids.shape[1] :], skip_special_tokens=True
-            )
+                # Move inputs to device with correct dtype
+                inputs = inputs.to(device, dtype=dtype)
 
-            chunk_text = decoded_outputs[0]
-            full_text.append(chunk_text)
+                # Generate transcription
+                with torch.no_grad():
+                    outputs = model.generate(
+                        **inputs,
+                        max_new_tokens=max_new_tokens,
+                    )
 
-            print(
-                f"Chunk {i + 1} complete: {len(chunk_text)} characters", file=sys.stderr
-            )
+                # Decode only the newly generated tokens (skip the input prompt)
+                decoded_outputs = processor.batch_decode(
+                    outputs[:, inputs.input_ids.shape[1] :], skip_special_tokens=True
+                )
 
-        finally:
-            # Clean up temp file
-            if os.path.exists(chunk_path):
-                os.remove(chunk_path)
+                chunk_text = decoded_outputs[0]
+                full_text.append(chunk_text)
+
+                print(
+                    f"Chunk {i + 1} complete: {len(chunk_text)} characters", file=sys.stderr
+                )
+
+            finally:
+                # Clean up temp file
+                if os.path.exists(chunk_path):
+                    os.remove(chunk_path)
 
     # Concatenate all chunks
     final_text = " ".join(full_text)
@@ -166,7 +184,7 @@ def main():
     parser.add_argument("audio_path", type=str, help="Path to input audio file")
     parser.add_argument("output_path", type=str, help="Path to output JSON file")
     parser.add_argument(
-        "--language", type=str, default="en", help="Language code (default: en)"
+        "--language", type=str, default="auto", help="Language code or auto (default: auto)"
     )
     parser.add_argument(
         "--model-id",
@@ -189,7 +207,7 @@ def main():
     )
     parser.add_argument(
         "--chunk-len",
-        type=float,
+        type=positive_chunk_duration,
         default=1500,
         help="Chunk duration in seconds (default: 1500 = 25 minutes)",
     )

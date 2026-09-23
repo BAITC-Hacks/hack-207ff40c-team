@@ -36,7 +36,8 @@ def main():
         with zipfile.ZipFile(archive) as bundle:
             names = set(bundle.namelist())
             for required in ("README.md", "LICENSE", "docs/SUBMISSION_NOTES.md", "requirements/validation.lock",
-                             "scripts/run-local.py", "mac-worker/src/meeting_worker/review.py", "web/frontend/package-lock.json"):
+                             "scripts/run-local.py", "mac-worker/src/meeting_worker/review.py", "web/frontend/package-lock.json",
+                             "internal/models/auth.go", "internal/models/note.go", "internal/models/summary.go", "internal/models/transcription.go"):
                 if required not in names:
                     raise SystemExit("Missing required submission file: " + required)
             if bundle.testzip() is not None:

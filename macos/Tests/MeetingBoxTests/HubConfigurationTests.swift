@@ -20,7 +20,7 @@ struct HubConfigurationTests {
 
     @Test func decodesHubReportContract() throws {
         let json = """
-        {"meeting_id":"a","title":"Review","status":"complete","last_sequence":2,
+        {"meeting_id":"a","title":"Review","status":"complete","last_sequence":2,"revision":4,"server_id":"hub-test",
         "segments":[{"sequence":2,"start":12.0,"end":13.0,"speaker":"remote","text":"Monday instead."}],
         "report":{"summary":"Deadline revised.","decisions":[{"text":"Move to Monday","evidence":[2]}],
         "action_items":[{"task":"Ship report","owner":null,"due":"Monday","evidence":[2]}],

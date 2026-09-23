@@ -7,14 +7,9 @@
   const elements = [...document.querySelectorAll('button, [role="button"], a')].filter(visible);
   const label = el => (el.getAttribute('aria-label') || el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
   const find = regex => elements.find(el => regex.test(label(el)) && !el.disabled && el.getAttribute('aria-disabled') !== 'true');
-  const text = document.body?.innerText || '';
-  if (/403\. That’s an error|403\. That's an error|you can.?t join this (video )?call|not allowed to join|request to join was denied|couldn't join|meeting (does not exist|not found)|invalid meeting|не удалось присоединиться|отказано в доступе/i.test(text)) {
-    return { state: 'blocked', message: 'The meeting provider refused this join request. Check the meeting link, guest access or the station account.' };
-  }
-  if (/you('ve| have) (left|been removed)|you left the (meeting|call)|meeting has ended|call has ended|вы покинули|встреча завершена/i.test(text)) return { state: 'ended', message: 'The meeting ended. Saving the recording.' };
-  if (/asking to (be let in|join)|someone.*let you in|waiting for (the )?(host|organizer)|waiting in the lobby|запрос отправлен|ожидание допуска/i.test(text)) return { state: 'waiting', message: 'Join request sent. Waiting for the host to admit Meeting Station.' };
   const leave = find(/^(leave call|leave meeting|leave|выйти из встречи|покинуть вызов)(\s*\(.*\))?$/i);
   if (leave) {
+    delete window.__stationTerminalSince;
     for (const media of document.querySelectorAll('audio')) {
       if (media.srcObject && media.paused && !media.muted) void media.play().catch(() => {});
     }
@@ -26,6 +21,29 @@
     if (camera) camera.click();
     return { state: 'joined', message: 'Meeting Station joined. Recording incoming audio with its microphone and camera off.' };
   }
+  // Only a terminal lifecycle heading can end capture. Chat and captions are
+  // untrusted meeting content and can contain any of these phrases.
+  const terminalWords = host === 'meet.google.com'
+    ? /^(you(?:'ve| have)? (?:left|been removed)(?: (?:the|this) (?:meeting|call))?[.!]?|the meeting has ended[.!]?|meeting has ended[.!]?|вы покинули (?:встречу|звонок)[.!]?|встреча завершена[.!]?)$/i
+    : host === 'zoom.us' || host.endsWith('.zoom.us')
+      ? /^(?:this |the )?meeting has (?:been )?ended(?: by (?:the )?host)?[.!]?$|^встреча завершена[.!]?$/i
+      : /^(?:you(?:'ve| have)? left (?:the )?(?:meeting|call)|(?:the )?(?:meeting|call) has ended|вы покинули (?:встречу|звонок)|встреча завершена)[.!]?$/i;
+  const terminal = [...document.querySelectorAll('h1, h2, [role="heading"]')].filter(visible).some(el =>
+    !el.closest('[role="log"], [role="feed"], [data-tid*="chat"], [data-tid*="caption"], [aria-label*="chat" i], [aria-label*="caption" i]') && terminalWords.test(label(el)));
+  if (terminal) {
+    const now = Date.now();
+    window.__stationTerminalSince ??= now;
+    if (now - window.__stationTerminalSince >= 2000) return { state: 'ended', message: 'The meeting ended. Saving the recording.' };
+    return { state: 'joining', message: 'Checking whether the meeting has ended; recording continues.' };
+  }
+  delete window.__stationTerminalSince;
+  const text = [...document.querySelectorAll('h1, h2, [role="heading"], [role="alert"], [role="dialog"]')]
+    .filter(visible).filter(el => !el.closest('[role="log"], [role="feed"], [data-tid*="chat"], [data-tid*="caption"]'))
+    .map(label).join('\n');
+  if (/403\. That’s an error|403\. That's an error|you can.?t join this (video )?call|not allowed to join|request to join was denied|couldn't join|meeting (does not exist|not found)|invalid meeting|не удалось присоединиться|отказано в доступе/i.test(text)) {
+    return { state: 'blocked', message: 'The meeting provider refused this join request. Check the meeting link, guest access or the station account.' };
+  }
+  if (/asking to (be let in|join)|someone.*let you in|waiting for (the )?(host|organizer)|waiting in the lobby|запрос отправлен|ожидание допуска/i.test(text)) return { state: 'waiting', message: 'Join request sent. Waiting for the host to admit Meeting Station.' };
   if (document.querySelector('input[type="password"]') || /sign in to join|you need to sign in|требуется вход/i.test(text)) return { state: 'blocked', message: 'This meeting requires an account or passcode. Complete that setup once in the station browser.' };
   if (document.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"]')) return { state: 'blocked', message: 'The provider requires a human verification check in the station browser.' };
   const withoutMedia = find(/^(continue without (microphone and camera|microphone|camera)|join without audio|dismiss|got it|продолжить без.*|понятно)$/i);

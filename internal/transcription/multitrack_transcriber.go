@@ -24,9 +24,23 @@ import (
 
 // Note: TrackCursor removed - using simpler segment-based approach
 
+type trackJobProcessor interface {
+	ProcessJob(context.Context, string) error
+}
+
+// admittedTrackProcessor runs sequential tracks inside a parent's existing
+// inference admission. It must not acquire a second slot from the same budget.
+type admittedTrackProcessor struct {
+	service *UnifiedTranscriptionService
+}
+
+func (p admittedTrackProcessor) ProcessJob(ctx context.Context, jobID string) error {
+	return p.service.ProcessJob(ctx, jobID)
+}
+
 // MultiTrackTranscriber handles transcription of multi-track audio jobs
 type MultiTrackTranscriber struct {
-	unifiedProcessor *UnifiedJobProcessor
+	unifiedProcessor trackJobProcessor
 	db               *gorm.DB
 	// Track active temporary jobs for termination support
 	activeTrackJobs map[string][]string // main job ID -> list of track job IDs
@@ -34,7 +48,7 @@ type MultiTrackTranscriber struct {
 }
 
 // NewMultiTrackTranscriber creates a new multi-track transcriber
-func NewMultiTrackTranscriber(unifiedProcessor *UnifiedJobProcessor) *MultiTrackTranscriber {
+func NewMultiTrackTranscriber(unifiedProcessor trackJobProcessor) *MultiTrackTranscriber {
 	return &MultiTrackTranscriber{
 		unifiedProcessor: unifiedProcessor,
 		db:               database.DB,

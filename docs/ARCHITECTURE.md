@@ -29,7 +29,9 @@ The standalone application layer uses two Python processes and SQLite/files. `sc
 starts the existing station and worker; the station serves the built React app.
 Ollama runs as a separately provisioned local service. The launcher does not start
 Ollama, install anything or download weights. Heavy model jobs
-are serialized by the worker. Incomplete jobs retain their sources; interrupted
+are serialized by the worker. Each ASR/diarization stage runs in a disposable
+process with a deadline and cancellation; nested audio tools share its process
+group, and the parent removes all stage scratch files. Incomplete jobs retain their sources; interrupted
 work can be retried. Standalone hosting binds to loopback and uses a separate
 archive/tokens from the historical appliance deployment.
 
@@ -71,8 +73,10 @@ checks.json            Executable verification commands
 
 The retained `cmd/`, `internal/`, `pkg/`, `deploy/`, Go/Docker files, `backend/`,
 `engine/`, `macos/` and `web/project-site/` support the earlier appliance, native
-client or project website. They are outside the verified standalone path. Their
-paths remain intact to avoid breaking those integrations during repository cleanup.
+client or project website. They are outside the standalone launch path. The
+retained Go service now has a separate build/race suite, and the native client
+has build/snapshot tests; these do not validate physical appliance behavior.
+Their paths remain intact to preserve those integrations.
 See [historical component map](history/README.md) before changing them.
 
 `.local/` holds private runtime state, installed test browsers and local migration
@@ -83,12 +87,16 @@ repository for the consolidated application and harness.
 ## Recording and review lifecycle
 
 1. The station authenticates an import, saves the source and queues delivery.
+   Both station and worker sync source bytes and their directory before accepting
+   a job. Station cancel/retry commands carry a generation number, so a delayed
+   response cannot overwrite newer user intent. Polling shares time with new uploads.
 2. The worker normalizes audio, transcribes locally and assigns raw speaker IDs.
 3. Structured extraction produces candidate findings; source and chronological
    checks preserve uncertainty when a claim cannot be verified.
 4. The secretary names voices, edits or rejects findings, and can recover omitted
    actions by selecting existing transcript passages.
-5. The worker renders the complete new document set before publishing its result
+5. The worker checks the fully expanded report against the station's 16 MiB limit,
+   then renders the complete new document set before publishing its result
    pointer. The station downloads that revision before replacing its cache.
 
 ```mermaid

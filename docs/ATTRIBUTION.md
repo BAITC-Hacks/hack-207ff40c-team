@@ -41,6 +41,13 @@ global novelty claim is made.
 
 ## Dependencies and model assets
 
+The foundation repairs add no model algorithm or borrowed implementation.
+Go 1.24.4 and the modules already pinned in `go.mod`/`go.sum` were provisioned
+locally for compilation and race checks; their binaries/cache remain outside Git.
+The retained Voxtral adapter now checks the exact processor/tokenizer API versions
+documented with primary source links in its [adapter notes](../internal/transcription/adapters/py/README.md).
+Those optional ML packages were inspected, not installed or run with weights.
+
 Python package versions used for core checks are in
 [requirements/validation.lock](../requirements/validation.lock); frontend versions
 and integrity hashes are in [package-lock.json](../web/frontend/package-lock.json).

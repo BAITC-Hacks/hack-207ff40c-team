@@ -6,7 +6,52 @@ no paid APIs or external audio/text inference. Speech-model assets remain
 unprovisioned. The human-activation procedural deviation is recorded in
 [DEVELOPMENT.md](DEVELOPMENT.md), alongside the completed protocol checks.
 
-## Latest work: README presentation
+## Latest work: foundation repairs
+
+The user requested implementation of every actionable finding in the full review.
+[FOUNDATION_FIXES.md](FOUNDATION_FIXES.md) maps R001–R072 to repairs, tests and
+remaining environment-specific acceptance. Three specialists worked in isolated
+worktrees; the primary agent integrated the changes and their independent
+cross-reviews. All product changes are in this repository root.
+
+Recording admission now waits for directory durability; station commands use
+generations; model stages have cancellable process supervision and private scratch
+cleanup. The review/export path enforces its expanded size contract and handles
+long multilingual PDF cells. Frontend failures retain recordings and edits,
+authentication refresh is coordinated, and generated Markdown cannot execute HTML
+or fetch images. Retained Go fixes cover admission, queue recovery/ownership,
+streaming, bounded quick inference, durable deletion and CLI security. Appliance,
+adapter and native snapshot contracts have dedicated regressions.
+
+The four `internal/models/*.go` source files are now visible to Git and required
+by harness/package checks; include them with the other new files in the next
+commit. Root model weights remain excluded. Exact modified/new source inventory:
+[changed-files.txt](verification/foundations-20260923/changed-files.txt).
+Go 1.24.4 and existing pinned Go modules were provisioned under ignored `.local/`.
+No ML models, paid APIs, external meeting-data inference or deployment were used.
+
+Last complete canonical command: `python3 scripts/harness.py verify`, exit 0,
+all **eight** configured checks passed: 34 harness tests; station frontend build;
+237 station/worker tests; lint; 95 retained Python/adapter tests; 33 browser
+regressions; two actual review/export browser workflows. The latter exercised
+real local services with supplied synthetic output, corrected/recovered tasks,
+replayed requests and independently inspected downloaded DOCX/PDF content.
+[Receipt and raw output](verification/foundations-20260923/verification.json).
+
+Separate native build/tests passed: 16 tests, actual Swift application compiled.
+`make verify-go` built the retained interface and passed the whole Go race suite,
+including historical integration tests, with exit 0. The first run exposed three
+old test fixtures; the corrected contract fixtures and full rerun passed.
+The [verification index](verification/foundations-20260923/README.md) preserves
+both outcomes and exact boundaries.
+CI now declares these regressions for future runs; no remote CI result is claimed.
+
+No fix commits or push were created during this work. The user's README/identity
+commits were preserved; local Git identity remains Agzam <agzamikail@gmail.com>.
+The original audit below is historical, and does not mean its 72 findings remain
+open. No claim of production readiness follows from synthetic regressions.
+
+## Previous work: README presentation
 
 Rebuilt the Russian README as a sequential introduction to the Samruk-Kazyna
 case: user problem, six workflow steps, current interface, station/worker
@@ -32,26 +77,26 @@ absent from this checkout. Restored its exact bytes from the preserved applicati
 worktree; all four preserved worktrees contain the same original MIT notice.
 
 The README distinguishes implemented local controls from open security/access
-work, and current exports from future reminders/task continuity. Existing audit
-findings remain open. This work changes documentation/assets only; no product
+work, and current exports from future reminders/task continuity. At that checkpoint,
+audit findings remained open. That work changed documentation/assets only; no product
 fixes or model/dependency installation were performed. The prior full application
 verification below remains the applicable code-check receipt.
 
 ## Previous work: technical review and interface branding
 
-Full findings: [TECHNICAL_REVIEW.md](TECHNICAL_REVIEW.md): **72 open findings —
+Original findings: [TECHNICAL_REVIEW.md](TECHNICAL_REVIEW.md): **72 findings —
 13 P1, 57 P2, 2 P3**, each with a location, failure scenario and minimal fix.
 Current, optional, retained and inactive paths are labeled separately. Three
 independent review agents covered the worker, station/appliance and frontend/native
 clients; the integrator covered Go, authentication, queues, streaming and packaging.
 No audit defect was silently fixed or marked resolved by this work.
 
-Immediate current-path concerns include dropped deadlines across extraction
+The review identified dropped deadlines across extraction
 chunks, an unsupervised consumer, source durability, station command races,
 starved submissions and oversized/unrenderable exports. The retained Go path also
-has security and recording-loss findings. Required `internal/models/*.go` files
-are still ignored and absent from the commit; fix source packaging before relying
-on a clean-checkout Go build. Passing existing tests is not a production verdict.
+had security and recording-loss findings. Required `internal/models/*.go` files
+were ignored and absent from the reviewed commit. The repairs above address these
+findings; the original test pass was not a production verdict.
 
 The separately authorized cosmetic cleanup replaced visible Scriberr branding
 with Meeting Station. Exact source changes:
@@ -87,8 +132,9 @@ Upstream baseline: `849f2224f93209feb9ce408f4ebd898026a9c97d` from the participa
 [Eraly-ml/meeting-intelligence](https://github.com/Eraly-ml/meeting-intelligence).
 
 Root Git branch `main` and its existing history are preserved (pre-consolidation
-HEAD `d6703a9`). Current root HEAD is `e40f2733d18f989a1e24023172214bb1046c2562`;
-the review and branding changes above are uncommitted. The former nested clone
+HEAD `d6703a9`). Following the authorized identity rewrite and the user's README
+commit, the foundation repairs are based on `ebe8e1e` (`overwrite`) and remain
+uncommitted. The former nested clone
 has been flattened. Its complete Git bundle, original metadata, inactive
 worktrees, original conflicting harness files, old binaries and previous ZIP
 remain under ignored `.local/repository-migration-20260923/`. The bundle verified
@@ -118,7 +164,7 @@ successfully. No remote, deployment or publish operation was performed.
   notes have current paths. Raw verification receipts/logs are in
   `docs/verification/`. The moved local environment was repointed without installs.
 
-## Verification
+## Previous verification before repairs
 
 Last full command: `python3 scripts/harness.py verify`, exit 0. All six configured
 checks passed: harness structure; **33 harness regressions**; production React
@@ -146,10 +192,11 @@ its historical source-parity and bundle checks do not resolve the new findings.
 
 ## Next action
 
-Fix the current-path P1 findings and source exclusions first, then the station
-state/export defects, with targeted regression tests. If retained Go entry points
-will ship, address their P1 security and data-loss findings before enabling them.
-Use `make verify` after changes and a clean-checkout build before packaging.
+Provision the selected local speech/diarization/language models and run a labeled
+RU/KZ/mixed recording through the complete offline audio-to-export path. The
+source/contract regressions cannot establish that quality. Before packaging,
+commit the repaired source inventory and repeat the relevant checks from a clean
+checkout; `make package` intentionally refuses an uncommitted source tree.
 The proposed formal issuance gate, execution lifecycle/reminders, confirmed
 cross-meeting continuity and project roles remain explicit requirements gaps in
 the review; basic correction/review bundles already exist. No implementation of

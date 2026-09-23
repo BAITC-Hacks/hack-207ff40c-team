@@ -20,6 +20,14 @@ are available with Unicode and visible evidence/review status.
 
 ## Verification record
 
+Latest foundation repairs and exact verification boundaries:
+[FOUNDATION_FIXES.md](FOUNDATION_FIXES.md). The current eight-check
+[harness receipt](verification/foundations-20260923/verification.json) covers
+34 harness, 237 station/worker and 95 retained Python tests, 33 browser regressions,
+two real local review/export workflows, build and lint. Separate Go race/native
+receipts are in the same directory. The consolidation/checkpoint records below
+are historical; they do not describe the current source byte-for-byte.
+
 The application was consolidated into the existing harness repository on
 2026-09-23. There is now one source root. `python3 scripts/harness.py verify`
 passed from that root: structure check, **33 harness tests**, **171 backend/local

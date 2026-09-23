@@ -15,6 +15,16 @@ export function CLIAuthConfirmation() {
 
     const callbackUrl = searchParams.get('callback_url')
     const deviceName = searchParams.get('device_name') || 'CLI Device'
+    const state = searchParams.get('state')
+    let callbackDestination = ''
+    try {
+        const explicitLoopback = (callbackUrl || '').match(/^http:\/\/(?:127\.0\.0\.1|\[::1\]):([0-9]{1,5})\/callback$/)
+        const callback = new URL(callbackUrl || '')
+        if (explicitLoopback && Number(explicitLoopback[1]) > 0 && callback.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(callback.hostname)
+            && callback.pathname === '/callback'
+            && !callback.username && !callback.password && !callback.search && !callback.hash
+            && /^[A-Za-z0-9_-]{43}$/.test(state || '')) callbackDestination = callbackUrl!
+    } catch { /* Invalid links never reach the approval flow. */ }
 
     useEffect(() => {
         const checkSession = async () => {
@@ -35,16 +45,17 @@ export function CLIAuthConfirmation() {
             }
         }
 
-        if (!callbackUrl) {
-            setError('Invalid request: Missing callback URL.')
+        if (!callbackDestination) {
+            setError('Invalid request: start login from the CLI on this computer. A loopback callback and login nonce are required.')
             setLoading(false)
             return
         }
 
         checkSession()
-    }, [callbackUrl, getAuthHeaders])
+    }, [callbackDestination, getAuthHeaders])
 
     const handleApprove = async () => {
+        if (!callbackDestination) return;
         setProcessing(true)
         try {
             const res = await fetch('/api/v1/auth/cli/authorize', {
@@ -54,7 +65,8 @@ export function CLIAuthConfirmation() {
                     ...getAuthHeaders(),
                 },
                 body: JSON.stringify({
-                    callback_url: callbackUrl,
+                    callback_url: callbackDestination,
+                    state,
                     device_name: deviceName,
                 }),
             })
@@ -62,7 +74,12 @@ export function CLIAuthConfirmation() {
             if (res.ok) {
                 const data = await res.json()
                 // Redirect to the CLI callback URL
-                window.location.href = data.redirect_url
+                const redirect = new URL(data.redirect_url)
+                const expected = new URL(callbackDestination)
+                if (redirect.origin !== expected.origin || redirect.pathname !== expected.pathname
+                    || redirect.username || redirect.password || redirect.hash
+                    || redirect.searchParams.get('state') !== state) throw new Error('Unexpected CLI callback.')
+                window.location.href = redirect.href
             } else {
                 setError('Failed to authorize CLI.')
                 setProcessing(false)
@@ -123,6 +140,7 @@ export function CLIAuthConfirmation() {
                         <span className="font-bold">{deviceName}</span> wants to access your account <span className="font-bold">{user?.username}</span>.
                     </p>
 
+                    <p className="text-sm break-all mb-6">Login returns only to this computer: <strong>{callbackDestination}</strong>. Approve only if you just started this login in your terminal.</p>
                     <div className="flex flex-col gap-3">
                         <Button
                             variant="brand"

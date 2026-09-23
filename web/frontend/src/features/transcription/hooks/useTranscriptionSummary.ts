@@ -49,7 +49,7 @@ export function useSummarizer(audioId: string) {
 
     const generateSummary = async (templateId: string, model: string, prompt: string, transcriptText: string, includeSpeakerInfo?: boolean) => {
         setIsStreaming(true);
-        setStreamContent("");
+        const previousContent = streamContent;
         setError(null);
 
         const transcriptLabel = includeSpeakerInfo
@@ -69,13 +69,19 @@ export function useSummarizer(audioId: string) {
                 }),
             });
 
+            if (!res.ok) throw new Error(`Summary generation failed (${res.status}). Please retry.`);
+            if (!res.headers.get('content-type')?.toLowerCase().startsWith('text/plain')) {
+                throw new Error('The server returned an unexpected summary format.');
+            }
             if (!res.body) {
                 throw new Error('Failed to start summary stream.');
             }
 
+            setStreamContent("");
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
 
+            try {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) {
@@ -87,10 +93,13 @@ export function useSummarizer(audioId: string) {
                 if (chunk) setStreamContent(prev => prev + chunk);
             }
 
+            } finally { reader.releaseLock(); }
+
             // Invalidate summary query after successful generation
             queryClient.invalidateQueries({ queryKey: ["summary", audioId] });
 
         } catch (e) {
+            setStreamContent(previousContent);
             setError(e instanceof Error ? e.message : "Summary generation failed");
         } finally {
             setIsStreaming(false);

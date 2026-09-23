@@ -1,0 +1,4 @@
+STDOUT
+Harness structure: OK; product not evaluated
+
+STDERR

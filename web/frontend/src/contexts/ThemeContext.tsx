@@ -1,3 +1,4 @@
+import { localPreferences } from '@/lib/browserStorage';
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'light' | 'dark'
@@ -11,12 +12,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme')
-    return (savedTheme as Theme) || 'light'
+    const savedTheme = localPreferences.getItem('theme')
+    return savedTheme === 'dark' ? 'dark' : 'light'
   })
 
   useEffect(() => {
-    localStorage.setItem('theme', theme)
+    localPreferences.setItem('theme', theme)
 
     const root = document.documentElement
     if (theme === 'dark') {

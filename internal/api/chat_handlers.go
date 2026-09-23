@@ -506,7 +506,6 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Transcript is too long for this model's context window (estimated %d tokens, limit %d). Please use a model with a larger context window.", transcriptTokens, contextWindow)})
 			return
 		}
-		currentTokenCount += transcriptTokens
 	} else {
 		fmt.Printf("Warning: Transcript is nil or empty for chat session %s. Transcription ID: %s\n", sessionID, session.TranscriptionID)
 		if session.Transcription.ID == "" {
@@ -523,7 +522,6 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 			msgContent = transcriptContext + "User question: " + msg.Content
 			fmt.Printf("Debug: Prepended transcript to first user message\n")
 		}
-		msgTokens := len(msgContent) / 4
 
 		// Inject style prompt for user messages (in-memory only, not saved to DB)
 		finalContent := msgContent
@@ -535,16 +533,16 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 			Role:    msg.Role,
 			Content: finalContent,
 		})
-		currentTokenCount += msgTokens
+		currentTokenCount += (len(finalContent) + 3) / 4
 	}
 
 	// Intelligent context trimming: if context exceeds limit, remove oldest messages
 	// Keep the first message (with transcript context) and trim from the middle
 	trimmedCount := 0
-	for currentTokenCount > contextWindow && len(openaiMessages) > 2 {
+	for currentTokenCount > contextWindow-500 && len(openaiMessages) > 2 {
 		// Remove the second message (oldest after the context-bearing first message)
 		removed := openaiMessages[1]
-		removedTokens := len(removed.Content) / 4
+		removedTokens := (len(removed.Content) + 3) / 4
 		openaiMessages = append(openaiMessages[:1], openaiMessages[2:]...)
 		currentTokenCount -= removedTokens
 		trimmedCount++
@@ -556,7 +554,7 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 	}
 
 	// Final check - if still over limit after trimming all possible messages, return error
-	if currentTokenCount > contextWindow {
+	if currentTokenCount > contextWindow-500 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Transcript alone exceeds model context limit (%d tokens > %d). Please use a model with larger context window.", currentTokenCount, contextWindow)})
 		return
 	}
@@ -600,82 +598,70 @@ func (h *Handler) SendChatMessage(c *gin.Context) {
 	contentChan, errorChan := svc.ChatCompletionStream(ctx, session.Model, openaiMessages, 0.0)
 
 	var assistantResponse strings.Builder
-	for {
+	persistResponse := func() {
+		if assistantResponse.Len() == 0 {
+			return
+		}
+		message := &models.ChatMessage{SessionID: sessionID, ChatSessionID: sessionID, Role: "assistant", Content: assistantResponse.String()}
+		if err := h.chatRepo.AddMessage(context.Background(), message); err != nil {
+			return
+		}
+		now := time.Now()
+		session.UpdatedAt = now
+		session.LastActivityAt = &now
+		session.MessageCount += 2
+		_ = h.chatRepo.Update(context.Background(), session)
+	}
+	for contentChan != nil || errorChan != nil {
 		select {
 		case content, ok := <-contentChan:
 			if !ok {
-				// Channel closed, save complete response and return
-				if assistantResponse.Len() > 0 {
-					assistantMessage := &models.ChatMessage{
-						SessionID:     sessionID,
-						ChatSessionID: sessionID,
-						Role:          "assistant",
-						Content:       assistantResponse.String(),
-					}
-					_ = h.chatRepo.AddMessage(context.Background(), assistantMessage)
-
-					// Update session updated_at, message count, and last activity
-					now := time.Now()
-					session.UpdatedAt = now
-					session.LastActivityAt = &now
-					session.MessageCount += 2 // +2 for user + assistant message
-					_ = h.chatRepo.Update(context.Background(), session)
-				}
+				contentChan = nil
+				continue
+			}
+			if _, err := c.Writer.WriteString(content); err != nil {
 				return
 			}
-
-			// Write content to response
-			_, _ = c.Writer.WriteString(content)
 			c.Writer.Flush()
 			assistantResponse.WriteString(content)
-
-		case err := <-errorChan:
-			if err != nil {
-				// If streaming is not supported for this model/org, fall back to non-streaming
-				errStr := err.Error()
-				if strings.Contains(errStr, "\"param\": \"stream\"") || strings.Contains(errStr, "unsupported_value") || strings.Contains(errStr, "must be verified to stream") {
-					resp, err2 := svc.ChatCompletion(ctx, session.Model, openaiMessages, 0.0)
-					if err2 != nil || resp == nil || len(resp.Choices) == 0 {
-						_, _ = c.Writer.WriteString("\nError: " + err2.Error())
-						c.Writer.Flush()
-						return
+		case err, ok := <-errorChan:
+			if !ok {
+				errorChan = nil
+				continue
+			}
+			if err == nil {
+				continue
+			}
+			errStr := err.Error()
+			if assistantResponse.Len() == 0 && (strings.Contains(errStr, "\"param\": \"stream\"") || strings.Contains(errStr, "unsupported_value") || strings.Contains(errStr, "must be verified to stream")) {
+				response, fallbackErr := svc.ChatCompletion(ctx, session.Model, openaiMessages, 0.0)
+				if fallbackErr != nil || response == nil || len(response.Choices) == 0 {
+					message := "model returned no completion"
+					if fallbackErr != nil {
+						message = fallbackErr.Error()
 					}
-					content := resp.Choices[0].Message.Content
-					_, _ = c.Writer.WriteString(content)
+					_, _ = c.Writer.WriteString("\nError: " + message)
 					c.Writer.Flush()
-					assistantResponse.WriteString(content)
-
-					if assistantResponse.Len() > 0 {
-						assistantMessage := &models.ChatMessage{
-							SessionID:     sessionID,
-							ChatSessionID: sessionID,
-							Role:          "assistant",
-							Content:       assistantResponse.String(),
-						}
-						_ = h.chatRepo.AddMessage(context.Background(), assistantMessage)
-
-						// Update session updated_at, message count, and last activity
-						now := time.Now()
-						session.UpdatedAt = now
-						session.LastActivityAt = &now
-						session.MessageCount += 2 // +2 for user + assistant message
-						_ = h.chatRepo.Update(context.Background(), session)
-					}
 					return
 				}
-
-				// Otherwise, return the error to the client
-				_, _ = c.Writer.WriteString("\nError: " + err.Error())
+				content := response.Choices[0].Message.Content
+				_, _ = c.Writer.WriteString(content)
 				c.Writer.Flush()
+				assistantResponse.WriteString(content)
+				persistResponse()
 				return
 			}
-
+			_, _ = c.Writer.WriteString("\nError: " + errStr)
+			c.Writer.Flush()
+			return
 		case <-ctx.Done():
 			_, _ = c.Writer.WriteString("\nRequest timeout")
 			c.Writer.Flush()
 			return
 		}
 	}
+	persistResponse()
+
 }
 
 // @Summary Update chat session title

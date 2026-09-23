@@ -28,6 +28,8 @@ class Recorder:
                 raise StoreError("A board recording is already active")
             if not self.available:
                 raise StoreError("No ALSA microphone is available. Connect a USB microphone or upload a recording", 503)
+            if self.settings.recording_seconds < 1:
+                raise StoreError('Recording limits do not allow one second of PCM audio', 422)
             job_id = str(uuid4())
             manifest = Manifest(meeting_id=job_id, **body.model_dump()).model_dump(mode="json")
             self.store.create(job_id, manifest, "audio", "board-recording.wav", job_id + ".wav", 0, "", recording=True)
@@ -35,7 +37,7 @@ class Recorder:
                 process = await asyncio.create_subprocess_exec(
                     shutil.which("arecord"), "-q", "-D", self.settings.alsa_device,
                     "-t", "wav", "-f", "S16_LE", "-r", "16000", "-c", "1",
-                    "-d", str(max(1, (self.settings.max_upload_bytes - 4096) // 32000)),
+                    "-d", str(self.settings.recording_seconds),
                     str(self.store.source(job_id)), stdin=asyncio.subprocess.DEVNULL,
                     stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
                 )

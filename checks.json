@@ -70,6 +70,18 @@
       "timeout_seconds": 120
     },
     {
+      "name": "adapter-appliance-native-python-regressions",
+      "kind": "test",
+      "argv": [".venv/bin/python", "scripts/check-regressions.py", "retained-python"],
+      "timeout_seconds": 120
+    },
+    {
+      "name": "frontend-browser-regressions",
+      "kind": "test",
+      "argv": [".venv/bin/python", "scripts/check-regressions.py", "frontend"],
+      "timeout_seconds": 180
+    },
+    {
       "name": "real-browser-review-and-exports",
       "kind": "smoke",
       "argv": [
@@ -79,5 +91,5 @@
       "timeout_seconds": 180
     }
   ],
-  "scope": "Core application and synthetic review acceptance. These checks do not establish ASR/diarization/model accuracy or production readiness."
+  "scope": "Core application, retained Python/adapter contracts and synthetic browser acceptance. Run make verify-go and make verify-native for those optional toolchains. No check establishes real model accuracy, provider integration or production readiness."
 }

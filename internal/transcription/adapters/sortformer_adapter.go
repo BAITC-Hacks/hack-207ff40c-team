@@ -59,9 +59,9 @@ func NewSortformerAdapter(envPath string) *SortformerAdapter {
 			Type:        "int",
 			Required:    false,
 			Default:     4,
-			Min:         &[]float64{1}[0],
-			Max:         &[]float64{8}[0],
-			Description: "Maximum number of speakers (optimized for 4)",
+			Min:         &[]float64{4}[0],
+			Max:         &[]float64{4}[0],
+			Description: "Fixed four-speaker capacity; use Pyannote for other speaker limits",
 			Group:       "basic",
 		},
 		{
@@ -375,6 +375,9 @@ func (s *SortformerAdapter) Diarize(ctx context.Context, input interfaces.AudioI
 
 // buildSortformerArgs builds the command arguments for Sortformer
 func (s *SortformerAdapter) buildSortformerArgs(input interfaces.AudioInput, params map[string]interface{}, tempDir string) ([]string, error) {
+	if err := s.ValidateParameters(params); err != nil {
+		return nil, err
+	}
 	outputFormat := s.GetStringParameter(params, "output_format")
 	var outputFile string
 	if outputFormat == OutputFormatJSON {

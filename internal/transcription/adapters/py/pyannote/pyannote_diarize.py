@@ -48,20 +48,13 @@ def diarize_audio(
             token=hf_token
         )
 
-        # Move to specified device
-        # if device == "auto" or device == "cuda":
-        try:
-            if torch.cuda.is_available():
-                pipeline = pipeline.to(torch.device("cuda"))
-                print("Using CUDA for diarization")
-            elif device == "cuda":
-                print("CUDA requested but not available, falling back to CPU")
-            else:
-                print("CUDA not available, using CPU")
-        except ImportError:
-            print("PyTorch not available for CUDA, using CPU")
-        except Exception as e:
-            print(f"Error moving to device: {e}, using CPU")
+        if device not in {"auto", "cpu", "cuda"}:
+            raise ValueError("Device must be cpu, cuda or auto")
+        selected_device = "cuda" if device == "auto" and torch.cuda.is_available() else "cpu" if device == "auto" else device
+        if selected_device == "cuda" and not torch.cuda.is_available():
+            raise ValueError("CUDA requested but unavailable")
+        pipeline = pipeline.to(torch.device(selected_device))
+        print(f"Using {selected_device.upper()} for diarization")
 
         # Apply segmentation thresholds if provided
         if segmentation_onset is not None or segmentation_offset is not None:
@@ -110,6 +103,9 @@ def diarize_audio(
             print("Using automatic speaker detection")
             diarization = pipeline(audio_path)
 
+        # Pyannote 4 wraps its Annotation in DiarizeOutput; all output paths
+        # must consume the same Annotation (including the default RTTM path).
+        diarization = getattr(diarization, "speaker_diarization", diarization)
         print(f"Diarization completed. Saving results to: {output_file}")
 
         if output_format == "rttm":
@@ -124,22 +120,9 @@ def diarize_audio(
         speakers = set()
         total_speech_time = 0.0
 
-        # Iterate over speaker diarization
-        # PyAnnote 4.x returns a DiarizeOutput object with a speaker_diarization attribute
-        if hasattr(diarization, "speaker_diarization"):
-            for turn, speaker in diarization.speaker_diarization:
-                speakers.add(speaker)
-                total_speech_time += turn.duration
-        elif hasattr(diarization, "itertracks"):
-            # Fallback for older versions
-            for segment, track, speaker in diarization.itertracks(yield_label=True):
-                speakers.add(speaker)
-                total_speech_time += segment.duration
-        else:
-            # Try iterating directly (some versions return Annotation directly)
-            for segment, track, speaker in diarization.itertracks(yield_label=True):
-                speakers.add(speaker)
-                total_speech_time += segment.duration
+        for segment, track, speaker in diarization.itertracks(yield_label=True):
+            speakers.add(speaker)
+            total_speech_time += segment.duration
 
         print(f"\nDiarization Summary:")
         print(f"  Speakers detected: {len(speakers)}")
@@ -157,28 +140,16 @@ def save_json_format(diarization, output_file: str, audio_path: str):
     segments = []
     speakers = set()
 
-    # PyAnnote 4.x
-    if hasattr(diarization, "speaker_diarization"):
-        for turn, speaker in diarization.speaker_diarization:
-            segments.append({
-                "start": turn.start,
-                "end": turn.end,
-                "speaker": speaker,
-                "confidence": 1.0,
-                "duration": turn.duration
-            })
-            speakers.add(speaker)
-    # Older versions
-    elif hasattr(diarization, "itertracks"):
-        for segment, track, speaker in diarization.itertracks(yield_label=True):
-            segments.append({
-                "start": segment.start,
-                "end": segment.end,
-                "speaker": speaker,
-                "confidence": 1.0,
-                "duration": segment.duration
-            })
-            speakers.add(speaker)
+    annotation = getattr(diarization, "speaker_diarization", diarization)
+    for segment, track, speaker in annotation.itertracks(yield_label=True):
+        segments.append({
+            "start": segment.start,
+            "end": segment.end,
+            "speaker": speaker,
+            "confidence": 1.0,
+            "duration": segment.duration,
+        })
+        speakers.add(speaker)
 
     # Sort segments by start time
     segments.sort(key=lambda x: x["start"])

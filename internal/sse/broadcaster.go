@@ -36,6 +36,7 @@ type Broadcaster struct {
 	broadcast   chan Message
 	shutdown    chan struct{}
 	mutex       sync.RWMutex
+	stopOnce    sync.Once
 }
 
 // NewBroadcaster creates a new Broadcaster
@@ -68,8 +69,10 @@ func (b *Broadcaster) listen() {
 		case sub := <-b.unregister:
 			b.mutex.Lock()
 			if clients, ok := b.subscribers[sub.JobID]; ok {
-				delete(clients, sub.Channel)
-				close(sub.Channel)
+				if clients[sub.Channel] {
+					delete(clients, sub.Channel)
+					close(sub.Channel)
+				}
 				if len(clients) == 0 {
 					delete(b.subscribers, sub.JobID)
 				}
@@ -109,7 +112,7 @@ func (b *Broadcaster) listen() {
 
 // Shutdown stops the broadcaster and closes all client connections
 func (b *Broadcaster) Shutdown() {
-	close(b.shutdown)
+	b.stopOnce.Do(func() { close(b.shutdown) })
 }
 
 // ServeHTTP handles the SSE connection
@@ -134,11 +137,17 @@ func (b *Broadcaster) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a channel for this client
-	messageChan := make(chan Event)
+	messageChan := make(chan Event, 16)
 	subscription := Subscription{JobID: jobID, Channel: messageChan}
 
 	// Register subscription
-	b.register <- subscription
+	select {
+	case b.register <- subscription:
+	case <-b.shutdown:
+		return
+	case <-r.Context().Done():
+		return
+	}
 
 	// Ensure cleanup on exit
 	defer func() {
@@ -181,11 +190,16 @@ func (b *Broadcaster) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Broadcast sends an event to clients subscribed to the specific job
 func (b *Broadcaster) Broadcast(jobID string, eventType string, payload interface{}) {
-	b.broadcast <- Message{
+	select {
+	case <-b.shutdown:
+		return
+	case b.broadcast <- Message{
 		JobID: jobID,
 		Event: Event{
 			Type:    eventType,
 			Payload: payload,
 		},
+	}:
+	case <-b.shutdown:
 	}
 }

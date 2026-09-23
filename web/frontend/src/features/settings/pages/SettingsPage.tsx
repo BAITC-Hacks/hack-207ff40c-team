@@ -171,21 +171,13 @@ export function Settings() {
               initial={editingSummary}
               onSave={async (tpl) => {
                 const headers: HeadersInit = { 'Content-Type': 'application/json', ...getAuthHeaders() };
-                try {
-                  if (tpl.id) {
-                    await fetch(`/api/v1/summaries/${tpl.id}`, { method: 'PUT', headers, body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info }) });
-                  } else {
-                    await fetch('/api/v1/summaries', { method: 'POST', headers, body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info }) });
-                  }
-                } finally {
-                  // Invalidate cache to propagate changes
-                  queryClient.invalidateQueries({ queryKey: ["summaryTemplates"] });
-
-                  // keep user on Summary tab and refresh the list without a full reload
-                  setSummaryDialogOpen(false);
-                  setEditingSummary(null);
-                  setSummaryRefresh((n) => n + 1);
-                }
+                const response = await fetch(tpl.id ? `/api/v1/summaries/${tpl.id}` : '/api/v1/summaries', {
+                  method: tpl.id ? 'PUT' : 'POST', headers,
+                  body: JSON.stringify({ name: tpl.name, description: tpl.description, model: tpl.model, prompt: tpl.prompt, include_speaker_info: tpl.include_speaker_info }),
+                });
+                if (!response.ok) throw new Error(`Template was not saved (${response.status}). Your edits are kept; please retry.`);
+                queryClient.invalidateQueries({ queryKey: ["summaryTemplates"] });
+                setSummaryRefresh(n => n + 1);
               }}
             />
           </TabsContent>

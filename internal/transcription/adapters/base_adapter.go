@@ -544,3 +544,20 @@ func (b *BaseAdapter) LogProcessingEnd(procCtx interfaces.ProcessingContext, pro
 			"processing_time", processingTime)
 	}
 }
+
+// redactCommandArgs returns a copy so execution retains credentials while logs do not.
+func redactCommandArgs(args []string) []string {
+	result := append([]string(nil), args...)
+	for index, arg := range result {
+		key, _, assigned := strings.Cut(arg, "=")
+		switch key {
+		case "--hf-token", "--hf_token", "--token", "--api-key", "--api_key":
+			if assigned {
+				result[index] = key + "=[REDACTED]"
+			} else if index+1 < len(result) {
+				result[index+1] = "[REDACTED]"
+			}
+		}
+	}
+	return result
+}

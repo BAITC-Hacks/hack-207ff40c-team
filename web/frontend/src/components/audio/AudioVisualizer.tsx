@@ -7,9 +7,17 @@ interface AudioVisualizerProps {
     hoverPercent?: number;
 }
 
-// Global cache to prevent "InvalidStateError" when React re-renders
-// This ensures we don't try to create a new SourceNode for an audio element that already has one.
-const audioSourceMap = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
+// A MediaElementSource can only be created once per audio element. This
+// component shares the lifetime of EmberPlayer's <audio>; defer disposal one
+// turn so React StrictMode's effect replay can reuse the same graph.
+interface AudioGraph {
+    context: AudioContext;
+    source: MediaElementAudioSourceNode;
+    analyser: AnalyserNode;
+    users: number;
+    disposeTimer?: ReturnType<typeof setTimeout>;
+}
+const audioGraphs = new WeakMap<HTMLAudioElement, AudioGraph>();
 
 export function AudioVisualizer({
     audioRef,
@@ -63,52 +71,51 @@ export function AudioVisualizer({
         return () => observer.disconnect();
     }, []);
 
-    // 2. Initialize Audio Context & Analyzer
     useEffect(() => {
-        if (!audioRef.current) return;
-
-        const initAudio = () => {
-            if (!contextRef.current) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                contextRef.current = new AudioContextClass();
+        const element = audioRef.current;
+        if (!element) return;
+        let graph = audioGraphs.get(element);
+        if (!graph) {
+            const context = new AudioContext();
+            try {
+                const source = context.createMediaElementSource(element);
+                const analyser = context.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                source.connect(analyser);
+                analyser.connect(context.destination);
+                graph = { context, source, analyser, users: 0 };
+                audioGraphs.set(element, graph);
+            } catch (cause) {
+                void context.close().catch(() => {});
+                console.error("Audio visualization is unavailable", cause);
+                return;
             }
-            const ctx = contextRef.current;
-
-            if (!analyzerRef.current) {
-                const analyzer = ctx.createAnalyser();
-                analyzer.fftSize = 256;
-                analyzer.smoothingTimeConstant = 0.8;
-                analyzerRef.current = analyzer;
-            }
-
-            const audioEl = audioRef.current!;
-
-            // Check cache to reuse existing MediaElementSource
-            if (audioSourceMap.has(audioEl)) {
-                try {
-                    const source = audioSourceMap.get(audioEl)!;
-                    source.connect(analyzerRef.current!);
-                    analyzerRef.current!.connect(ctx.destination);
-                } catch { /* ignore already connected errors */ }
-            } else {
-                try {
-                    const source = ctx.createMediaElementSource(audioEl);
-                    source.connect(analyzerRef.current!);
-                    analyzerRef.current!.connect(ctx.destination);
-                    audioSourceMap.set(audioEl, source);
-                } catch (e) {
-                    console.error("Audio Graph Error:", e);
-                }
+        }
+        const owned = graph;
+        if (owned.disposeTimer) clearTimeout(owned.disposeTimer);
+        owned.users++;
+        contextRef.current = owned.context;
+        analyzerRef.current = owned.analyser;
+        return () => {
+            contextRef.current = null;
+            analyzerRef.current = null;
+            if (--owned.users === 0) {
+                owned.disposeTimer = setTimeout(() => {
+                    owned.source.disconnect();
+                    owned.analyser.disconnect();
+                    void owned.context.close().catch(() => {});
+                    audioGraphs.delete(element);
+                }, 0);
             }
         };
+    }, [audioRef]);
 
-        initAudio();
-
+    useEffect(() => {
         if (isPlaying && contextRef.current?.state === "suspended") {
-            contextRef.current.resume();
+            void contextRef.current.resume().catch(() => {});
         }
-    }, [audioRef, isPlaying]);
+    }, [isPlaying]);
 
     // 3. The Drawing Loop (The "Electric Ember" Design)
     useEffect(() => {

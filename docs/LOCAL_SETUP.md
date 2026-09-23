@@ -118,10 +118,19 @@ directory. Generated settings, recordings and tokens must never be committed.
 ## Checks and troubleshooting
 
 ```sh
-.venv/bin/python -m pytest station/tests mac-worker/tests -q
-VITE_MEETING_STATION=true VITE_MEETING_LOCAL=true npm --prefix web/frontend run build
-npm --prefix web/frontend run lint
+make verify
+# If shipping the retained Go/native entry points, also run:
+make verify-go
+make verify-native  # macOS only
 ```
+
+`make verify` needs the core validation environment, Node dependencies and an
+already installed Playwright Chromium. `make verify-go` needs the Go version in
+`go.mod` and its modules provisioned under `.local/go`; it builds the retained
+interface separately and runs `go test -race ./...` with downloads disabled.
+`make verify-native` compiles and tests the existing Swift application. These
+commands never install dependencies. Exact evidence and supported combinations
+are in [FOUNDATION_FIXES.md](FOUNDATION_FIXES.md).
 
 Tests use synthetic fixtures/fake inference transports and do not establish real
 Russian/Kazakh accuracy. Verify an actual recording and downloaded report

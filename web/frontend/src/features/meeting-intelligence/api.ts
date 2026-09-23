@@ -145,7 +145,7 @@ export function createID(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 export const capabilities = (config: WorkerConfig) => json<Capabilities>(config, '/v1/capabilities')
-export const listJobs = (config: WorkerConfig, limit = 50) => json<JobRecord[]>(config, `/v1/jobs?limit=${limit}`)
+export const listJobs = (config: WorkerConfig, limit = 50, offset = 0) => json<JobRecord[]>(config, `/v1/jobs?limit=${limit}&offset=${offset}`)
 export const getJob = (config: WorkerConfig, id: string) => json<JobRecord>(config, `/v1/jobs/${encodeURIComponent(id)}`)
 export const getResult = (config: WorkerConfig, id: string) => json<MeetingResult>(config, `/v1/jobs/${encodeURIComponent(id)}/result`)
 export const saveReview = (config: WorkerConfig, id: string, review: ReviewRequest) => json<MeetingResult>(config, `/v1/jobs/${encodeURIComponent(id)}/review`, {

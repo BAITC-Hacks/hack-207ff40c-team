@@ -8,6 +8,7 @@ import math
 import os
 import re
 import signal
+import struct
 import subprocess
 import sys
 import threading
@@ -36,6 +37,71 @@ def meeting_url(value):
     raise ValueError("Use a Google Meet, Zoom or Microsoft Teams meeting link")
 
 
+def recover_pcm_wav(source, destination, max_bytes):
+    """Finalize a bounded copy of an interrupted FFmpeg PCM capture.
+
+    Never rewrite the original: it remains the recovery source and audit artifact.
+    Only this recorder's mono 16 kHz signed 16-bit PCM format is accepted.
+    """
+    size = source.stat().st_size
+    if not 44 <= size <= max_bytes:
+        raise wave.Error("Capture size is outside the recovery limit")
+    temporary = destination.with_suffix(".partial")
+    try:
+        with source.open("rb") as stream:
+            if stream.read(4) != b"RIFF":
+                raise wave.Error("Unsupported WAV container")
+            stream.read(4)
+            if stream.read(4) != b"WAVE":
+                raise wave.Error("Unsupported WAV container")
+            valid_format = False
+            while stream.tell() + 8 <= size:
+                chunk_id, length = struct.unpack("<4sI", stream.read(8))
+                if chunk_id == b"fmt ":
+                    if length < 16 or length > 65536 or stream.tell() + length > size:
+                        raise wave.Error("Invalid PCM format chunk")
+                    fmt = struct.unpack("<HHIIHH", stream.read(16))
+                    valid_format = fmt == (1, 1, 16000, 32000, 2, 16)
+                    stream.seek(length - 16 + length % 2, 1)
+                elif chunk_id == b"data":
+                    if not valid_format:
+                        raise wave.Error("Recovery requires mono 16 kHz 16-bit PCM")
+                    available = size - stream.tell()
+                    # FFmpeg uses 0xffffffff until normal shutdown. A killed
+                    # write may also leave a partial final sample: retain complete samples.
+                    count = min(length, available) if length not in (0, 0xffffffff) else available
+                    count -= count % 2
+                    if count < 2:
+                        raise wave.Error("No complete PCM frames to recover")
+                    with temporary.open("xb") as target:
+                        os.chmod(temporary, 0o600)
+                        with wave.open(target, "wb") as output:
+                            output.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+                            remaining = count
+                            while remaining:
+                                chunk = stream.read(min(65536, remaining))
+                                if not chunk:
+                                    raise wave.Error("Capture changed during recovery")
+                                output.writeframesraw(chunk)
+                                remaining -= len(chunk)
+                        target.flush()
+                        os.fsync(target.fileno())
+                    os.replace(temporary, destination)
+                    descriptor = os.open(destination.parent, os.O_RDONLY)
+                    try:
+                        os.fsync(descriptor)
+                    finally:
+                        os.close(descriptor)
+                    return
+                else:
+                    if length > size - stream.tell():
+                        raise wave.Error("Incomplete WAV metadata")
+                    stream.seek(length + length % 2, 1)
+            raise wave.Error("WAV contains no audio chunk")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 class ControllerError(Exception):
     def __init__(self, message, status=409):
         self.status = status
@@ -43,10 +109,13 @@ class ControllerError(Exception):
 
 
 class Controller:
-    def __init__(self, data_dir, max_bytes=512 * 1024 * 1024):
+    def __init__(self, data_dir, max_bytes=512 * 1024 * 1024, max_seconds=4 * 3600):
         self.directory = Path(data_dir) / "recordings"
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if isinstance(max_seconds, bool) or not math.isfinite(max_seconds) or max_seconds <= 0:
+            raise ValueError("Capture duration limit must be finite and positive")
         self.max_bytes = max_bytes
+        self.max_seconds = max_seconds
         self.lock = threading.RLock()
         self.active = None
         self.process = None
@@ -61,8 +130,7 @@ class Controller:
             with contextlib.suppress(ValueError, OSError):
                 record = json.loads(path.read_text())
                 if record["state"] == "recording":
-                    record.update(state="interrupted", error="Browser service restarted; any captured audio is retained")
-                    self.save(record)
+                    self.finalize(record["id"], forced=True)
 
     def path(self, recording_id, extension):
         return self.directory / (str(uuid.UUID(recording_id)) + extension)
@@ -82,11 +150,14 @@ class Controller:
             record = json.loads(self.path(recording_id, ".json").read_text())
         except FileNotFoundError as exc:
             raise ControllerError("Browser recording not found", 404) from exc
-        audio = self.path(recording_id, ".wav")
+        audio = self.audio_path(record)
         record["bytes"] = audio.stat().st_size if audio.exists() else 0
         if recording_id == self.active:
             record["audio_health"] = self.audio_health(record)
         return record
+
+    def audio_path(self, record):
+        return self.path(record["id"], ".recovered.wav" if record.get("audio_recovered") else ".wav")
 
     def audio_health(self, record):
         """Measure saved PCM, rather than inferring sound from a growing file."""
@@ -200,7 +271,7 @@ class Controller:
         finally:
             connection.close()
 
-    def join(self, url, recording_id):
+    def join(self, url, recording_id, max_seconds=None):
         recording_id = str(uuid.UUID(recording_id))
         with self.lock:
             if self.active == recording_id and self.join_state:
@@ -216,7 +287,7 @@ class Controller:
             self.join_state = {'recording_id':recording_id, 'state':'joining', 'admitted':False, 'message':'Preparing the meeting page.'}
             # Capture before the join request so admission cannot lose the first
             # words. A refused join is archived as a failed capture, not a report.
-            self.start(recording_id)
+            self.start(recording_id, max_seconds)
             threading.Thread(target=self.automate, args=(recording_id,), daemon=True).start()
             return self.status()
 
@@ -257,8 +328,12 @@ class Controller:
                         self.save(record)
                     return
 
-    def start(self, recording_id):
+    def start(self, recording_id, max_seconds=None):
         recording_id = str(uuid.UUID(recording_id))
+        if max_seconds is None:
+            max_seconds = self.max_seconds
+        if isinstance(max_seconds, bool) or not isinstance(max_seconds, (int, float)) or not math.isfinite(max_seconds) or max_seconds <= 0:
+            raise ControllerError("Capture duration must be finite and positive", 422)
         with self.lock:
             if self.active:
                 if self.active == recording_id:
@@ -269,7 +344,7 @@ class Controller:
             self.audio_activity.clear()
             record = {"id": recording_id, "state": "recording", "created_at": time.time(), "bytes": 0, "error": None}
             self.save(record)
-            maximum_seconds = min(4 * 3600, max(1, (self.max_bytes - 4096) // 32000))
+            maximum_seconds = min(max_seconds, self.max_seconds, max(1, (self.max_bytes - 4096) // 32000))
             try:
                 self.process = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-f", "pulse", "-i", "meeting_output.monitor", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-flush_packets", "1", "-t", str(maximum_seconds), "-fs", str(self.max_bytes), "-n", str(self.path(recording_id, ".wav"))], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except OSError as exc:
@@ -293,25 +368,47 @@ class Controller:
 
     def finalize(self, recording_id, forced=False):
         record = self.record(recording_id)
-        path = self.path(recording_id, ".wav")
+        original = self.path(recording_id, ".wav")
+        path = self.audio_path(record)
+
+        def validate(source):
+            if not 44 <= source.stat().st_size <= self.max_bytes:
+                raise wave.Error("Capture exceeds the recording size bound")
+            contains_audio = False
+            with wave.open(str(source), "rb") as stream:
+                if (stream.getnchannels(), stream.getsampwidth(), stream.getframerate()) != (1, 2, 16000) or stream.getnframes() < 1:
+                    raise wave.Error("Invalid capture format")
+                remaining = stream.getnframes()
+                while remaining:
+                    chunk = stream.readframes(min(remaining, 160000))
+                    if not chunk or len(chunk) % 2:
+                        raise wave.Error("Unfinalized or truncated WAV")
+                    remaining -= len(chunk) // 2
+                    contains_audio |= bool(chunk.strip(b"\x00"))
+            with source.open("rb") as stream:
+                os.fsync(stream.fileno())
+            source.chmod(0o600)
+            return contains_audio
+
         valid = False
         contains_audio = False
         try:
-            with wave.open(str(path), "rb") as stream:
-                valid = stream.getnframes() > 0 and stream.getnchannels() == 1 and stream.getframerate() == 16000
-                if valid:
-                    while chunk := stream.readframes(160000):
-                        if chunk.strip(b'\x00'):
-                            contains_audio = True
-                            break
-            if valid:
-                with path.open("rb") as stream:
-                    os.fsync(stream.fileno())
-                path.chmod(0o600)
+            contains_audio = validate(path)
+            valid = True
         except (OSError, EOFError, wave.Error):
-            pass
+            try:
+                path = self.path(recording_id, ".recovered.wav")
+                recover_pcm_wav(original, path, self.max_bytes)
+                contains_audio = validate(path)
+                valid = True
+                record["audio_recovered"] = True
+                record["original_bytes"] = original.stat().st_size
+            except (OSError, EOFError, wave.Error, struct.error):
+                pass
         error = None
-        if not valid or forced:
+        if record.get("audio_recovered"):
+            error = "Capture was interrupted; a recovered PCM copy is available for download and retry. The original file is retained."
+        elif not valid or forced:
             error = "Capture stopped unexpectedly or produced no valid WAV; available audio is retained"
         elif not contains_audio:
             error = "No sound was captured. The station saved silence; check the meeting audio before recording again. The original file is retained."
@@ -383,9 +480,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.command == "POST" and path == "/v1/open":
                 return self.reply(200, controller.open(body.get("url")))
             if self.command == 'POST' and path == '/v1/join':
-                return self.reply(202, controller.join(body.get('url'), body.get('id')))
+                return self.reply(202, controller.join(body.get('url'), body.get('id'), body.get('max_seconds')))
             if self.command == "POST" and path == "/v1/recordings/start":
-                return self.reply(202, controller.start(body.get("id")))
+                return self.reply(202, controller.start(body.get("id"), body.get("max_seconds")))
             match = re.fullmatch(r"/v1/recordings/([0-9a-f-]{36})/(stop|audio)", path)
             if match and self.command == "POST" and match[2] == "stop":
                 return self.reply(200, controller.stop(match[1]))
@@ -393,7 +490,7 @@ class Handler(BaseHTTPRequestHandler):
                 record = controller.record(match[1])
                 if record["state"] == "recording":
                     raise ControllerError("Stop browser capture before importing audio")
-                audio = controller.path(match[1], ".wav")
+                audio = controller.audio_path(record)
                 if not audio.exists() or not record["bytes"]:
                     raise ControllerError("No browser audio is available for this recording", 404)
                 self.send_response(200)
@@ -424,7 +521,7 @@ def main():
         raise SystemExit("MI_BROWSER_TOKEN must contain at least 16 characters")
     server = ThreadingHTTPServer(("127.0.0.1", 8770), Handler)
     server.token = token
-    server.controller = Controller(os.environ.get("MI_BROWSER_DATA_DIR", "/var/lib/meeting-browser"))
+    server.controller = Controller(os.environ.get("MI_BROWSER_DATA_DIR", "/var/lib/meeting-browser"), max_seconds=float(os.environ.get("MI_MAX_AUDIO_SECONDS", "14400")))
     server.serve_forever()
 
 

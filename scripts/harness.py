@@ -20,9 +20,12 @@ REQUIRED = ('AGENTS.md','START_HERE.md','brief.json','state.json','checks.json',
             'research/catalog.json','evals/config.json','evals/cases.jsonl',
             'scripts/evaluate.py','docs/SPRINT.md','docs/HANDOFF.md',
             '.codex/config.toml','.codex/agents/novelty_scout.toml',
-            '.codex/agents/feasibility_scout.toml','.codex/agents/independent_reviewer.toml')
+            '.codex/agents/feasibility_scout.toml','.codex/agents/independent_reviewer.toml',
+            'internal/models/auth.go','internal/models/note.go',
+            'internal/models/summary.go','internal/models/transcription.go')
 SKIP_DIRS = {'.git','.venv','venv','node_modules','__pycache__','reports','third_party',
-             'dist','.next','.local','.pytest_cache','worktrees','data','models','backups'}
+             'dist','.next','.local','.pytest_cache','worktrees','data','backups'}
+SKIP_ROOT_DIRS = {'models'}  # Model weights, not source packages such as internal/models.
 
 
 def stamp() -> str:
@@ -50,6 +53,7 @@ def snapshot(root: Path) -> dict:
     hashes = {}
     for directory, dirs, files in os.walk(root, followlinks=False):
         dirs[:] = sorted(name for name in dirs if name not in SKIP_DIRS
+                         and not (Path(directory) == root and name in SKIP_ROOT_DIRS)
                          and not name.endswith('.egg-info') and not (Path(directory)/name).is_symlink())
         for name in sorted(files):
             p = Path(directory)/name

@@ -43,7 +43,43 @@ jobs:
         env:
           MI_RUN_LOCAL_HTTP_TESTS: '1'
         run: .venv/bin/python -m pytest station/tests mac-worker/tests -q
+      - name: Retained Python and adapter contract regressions
+        run: .venv/bin/python scripts/check-regressions.py retained-python
       - name: Install test browser
         run: PLAYWRIGHT_BROWSERS_PATH="$PWD/.local/browsers" web/frontend/node_modules/.bin/playwright install --with-deps chromium --only-shell
       - name: Real interface and document downloads with synthetic supplied output
         run: .venv/bin/python scripts/check-ui.py
+      - name: Browser security, recording and state regressions
+        run: .venv/bin/python scripts/check-regressions.py frontend
+
+  retained-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.4'
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+      - name: Provision pinned build dependencies
+        env:
+          GOPATH: ${{ github.workspace }}/.local/go
+          GOMODCACHE: ${{ github.workspace }}/.local/go/pkg/mod
+        run: |
+          npm --prefix web/frontend ci --ignore-scripts
+          go mod download
+      - name: Compile retained interface and run full Go race suite
+        run: python3 scripts/check-regressions.py go
+
+  retained-native:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile retained native application and test snapshot ordering
+        run: python3 scripts/check-regressions.py native
