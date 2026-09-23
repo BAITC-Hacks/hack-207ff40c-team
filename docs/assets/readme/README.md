@@ -31,3 +31,19 @@ archive was opened, and no external browser requests were made.
 
 The [capture receipt](capture-receipt.json) records the steps, timestamp and scope.
 Full product verification is recorded separately under `docs/verification/`.
+
+## Presentation graphics
+
+`hero.svg`, `local-architecture.svg` and `security.svg` were authored for this
+README on 2026-09-23. They are repository-native SVG illustrations with no fonts,
+scripts or images fetched from external services. The hero's document is a
+concept illustration, not an application screenshot. The architecture and
+security graphics describe the configured two-device appliance; the loopback
+launcher does not automatically provision HTTPS or an encrypted vault.
+
+Layout references were the official [LocalSend README](https://github.com/localsend/localsend),
+[Appwrite README](https://github.com/appwrite/appwrite) and
+[Supabase README](https://github.com/supabase/supabase): a clear opening promise,
+compact navigation, product visuals and separate setup details. No artwork or
+wording was copied from those projects. The supplied raster artwork remains
+unchanged.

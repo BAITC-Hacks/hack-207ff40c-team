@@ -11,6 +11,11 @@ explicitly synthetic acceptance data, with real local requests and no model
 inference. They are separate from the enclosure illustrations and speech-quality
 evidence. No new artwork license or third-party endorsement is claimed.
 
+The September 23 README refresh adds three original SVG illustrations for the
+product introduction, local architecture and appliance security. They use no
+external assets or runtime dependencies. Design references and the distinction
+between illustrations and real screenshots are in the visual provenance record.
+
 ## Existing application
 
 Cloned on 2026-09-23 from

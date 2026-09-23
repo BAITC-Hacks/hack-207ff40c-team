@@ -7,6 +7,7 @@ root, where the application and its development harness now live together.
 | --- | --- |
 | Understand the components, data flow and review contract | [Architecture](ARCHITECTURE.md) |
 | Launch the standalone application | [Local setup](LOCAL_SETUP.md) |
+| Set up the room station, local Mac worker and device security | [Station setup](STATION_SETUP.md), [security](SECURITY.md) |
 | Provision speech, diarization and language models | [Model setup](MODEL_SETUP.md) |
 | Check the supplied case and actual requirement coverage | [Case](CHALLENGE.md), [coverage](REQUIREMENTS.md) |
 | Inspect actual test evidence and remaining limitations | [Submission evidence](SUBMISSION_NOTES.md), [verification artifacts](verification/) |
