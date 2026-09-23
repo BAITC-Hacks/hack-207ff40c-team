@@ -1,13 +1,13 @@
 .ms-auth,
 .ms-app-layout {
-  --ms-paper: #f6f6f4;
+  --ms-paper: #f3f6f8;
   --ms-card: #ffffff;
-  --ms-panel-2: #f0f0ed;
-  --ms-ink: #1b1b1a;
-  --ms-muted: #73736e;
-  --ms-line: #d8d8d3;
-  --ms-accent: #ef6c22;
-  --ms-success: #39815c;
+  --ms-panel-2: #eaf0f4;
+  --ms-ink: #142d45;
+  --ms-muted: #63778a;
+  --ms-line: #dce5eb;
+  --ms-accent: #157565;
+  --ms-success: #267b68;
   --ms-mark-ink: #ffffff;
   min-height: 100svh;
   color: var(--ms-ink);
@@ -17,14 +17,14 @@
 
 .dark .ms-auth,
 .dark .ms-app-layout {
-  --ms-paper: #0d0d0d;
-  --ms-card: #121212;
-  --ms-panel-2: #161616;
-  --ms-ink: #eeeeec;
-  --ms-muted: #999995;
-  --ms-line: #282828;
-  --ms-accent: #ef6c22;
-  --ms-success: #4fa978;
+  --ms-paper: #0e1b2b;
+  --ms-card: #132337;
+  --ms-panel-2: #1b3045;
+  --ms-ink: #eef4f7;
+  --ms-muted: #a6bacb;
+  --ms-line: #2a4055;
+  --ms-accent: #157565;
+  --ms-success: #69cdb2;
 }
 
 .ms-auth button,
@@ -212,4 +212,29 @@
   .ms-shell-content { padding: 0 12px 20px; }
   .ms-auth-main { padding-top: 64px; }
   .ms-brand-name { font-size: 14px; }
+}
+
+/* Shared station identity; all assets and fonts remain local. */
+.ms-header { height: 66px; background: #122b43; border-bottom: 1px solid #294158; color: #edf4f8; }
+.ms-header-inner { max-width: 1544px; margin: auto; padding: 0 32px; }
+.ms-header .ms-brand { color: #77cbb7; --ms-mark-ink: #122b43; gap: 11px; }
+.ms-header .ms-brand-mark { width: 34px; height: 34px; }
+.ms-header .ms-brand-name { color: #fff; font-size: 18px; letter-spacing: -.5px; }
+.ms-header .ms-header-nav { color: #b5c7d5; font-size: 13px; padding: 0 8px; }
+.ms-header .ms-header-nav.is-active { color: #fff; border-bottom: 2px solid #d6bd8a; }
+.ms-header .ms-icon-button { width: 34px; height: 34px; color: #c6d6e0; border-radius: 8px; }
+.ms-header .ms-icon-button:hover { color: #fff; background: #294158; }
+.ms-header .ms-icon-button:focus-visible { outline-color: #77cbb7; }
+.ms-local-label { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid #38566c; border-radius: 20px; color: #c2e8dd; font-size: 11px; margin-right: 12px; }
+.ms-local-label svg { width: 14px; height: 14px; }
+.ms-shell-content { padding: 0 32px 40px; }
+@media(max-width: 700px) {
+  .ms-header { height: 60px; }
+  .ms-header-inner { padding: 0 16px; gap: 10px; }
+  .ms-header-left { gap: 16px; }
+  .ms-header .ms-brand-name { font-size: 16px; }
+  .ms-header .ms-brand-mark { width: 30px; height: 30px; }
+  .ms-header .ms-header-nav { display: none; }
+  .ms-local-label { display: none; }
+  .ms-shell-content { padding: 0 14px 24px; }
 }

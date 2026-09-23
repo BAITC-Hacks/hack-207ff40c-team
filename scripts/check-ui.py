@@ -36,11 +36,11 @@ def seed(state):
     config = Settings(_env_file=None, api_token=launcher.read_tokens(state)["worker"], data_dir=state / "worker")
     config.prepare()
     identity = "11111111-1111-4111-8111-111111111111"
-    title = "Synthetic acceptance fixture · RU/KZ"
+    title = "Планирование проекта · учебный пример"
     manifest = JobManifest(meeting_id=identity, title=title, output_language="ru", language_mode="kk_ru")
     transcript = Transcript(model="synthetic-fixture-no-inference", language="kk_ru",
         raw_text="Мен есепті дайындаймын. Уточнение: отчёт подготовит Тимур к понедельнику.",
-        warnings=["Synthetic acceptance fixture. Speech recognition and AI extraction were not run."],
+        warnings=["Учебный пример: данные подготовлены для проверки интерфейса. Распознавание речи и ИИ-извлечение не запускались."],
         segments=[TranscriptSegment(id="s1", start=0, end=4, speaker="SPEAKER_00", text="Мен есепті дайындаймын."),
                   TranscriptSegment(id="s2", start=4, end=10, speaker="SPEAKER_01", text="Уточнение: отчёт подготовит Тимур к понедельнику.")])
     protocol = MeetingProtocol(metadata=MeetingMetadata(meeting_id=identity, title=title, report_language="ru"),
@@ -51,7 +51,7 @@ def seed(state):
     for empty in (False, True):
         if empty:
             identity = "33333333-3333-4333-8333-333333333333"
-            title = "Synthetic empty extraction · RU/KZ"
+            title = "Без извлечённых поручений · учебный пример"
             manifest = manifest.model_copy(update={"meeting_id": identity, "title": title})
             protocol = MeetingProtocol(metadata=MeetingMetadata(meeting_id=identity, title=title, report_language="ru"))
         source = config.data_dir / "sources" / (identity + ".txt")

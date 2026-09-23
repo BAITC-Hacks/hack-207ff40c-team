@@ -14,7 +14,7 @@ export function StationBrand({ compact = false }: { compact?: boolean }) {
 
 export function StationThemeButton() {
   const { theme, toggleTheme } = useTheme()
-  return <button className="ms-icon-button" onClick={toggleTheme} type="button" aria-label="Toggle theme" title="Toggle theme">
+  return <button className="ms-icon-button" onClick={toggleTheme} type="button" aria-label="Переключить тему" title="Переключить тему">
     {theme === 'light' ? <Moon /> : <Sun />}
   </button>
 }

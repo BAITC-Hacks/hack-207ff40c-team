@@ -48,15 +48,15 @@ test('R034 the 201st archived meeting can be opened and newer pages remain reach
   })
   await visit(page, 'archive')
   for (let i = 0; i < 4; i++) {
-    await page.getByRole('button', { name: 'Load older meetings', exact: true }).click()
-    await expect(page.getByText(`Page ${i + 2} · Search applies to this page.`)).toBeVisible()
+    await page.getByRole('button', { name: 'Более ранние записи', exact: true }).click()
+    await expect(page.getByText(`Страница ${i + 2} · Поиск по этой странице.`)).toBeVisible()
     await expect(page.getByRole('button', { name: new RegExp(`^Archived meeting ${50 * (i + 1) + 1}\\b`) })).toBeVisible()
   }
   await page.getByRole('button', { name: /Archived meeting 201/ }).click()
   await expect(page.getByRole('heading', { name: 'Archived meeting 201', exact: true })).toBeVisible()
   expect(offsets).toContain(200)
-  await page.getByRole('button', { name: 'Load newer meetings', exact: true }).click()
-  await expect(page.getByText('Page 4 · Search applies to this page.')).toBeVisible()
+  await page.getByRole('button', { name: 'Более новые записи', exact: true }).click()
+  await expect(page.getByText('Страница 4 · Поиск по этой странице.')).toBeVisible()
 })
 
 test('R035 concurrent 401s rotate once; a late failure cannot erase a newer login', async ({ page }) => {

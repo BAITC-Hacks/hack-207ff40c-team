@@ -121,12 +121,12 @@ function errorMessage(body: string, status: number): string {
   try {
     const parsed = JSON.parse(body)
     if (typeof parsed.detail === 'string') return parsed.detail
-    if (Array.isArray(parsed.detail)) return parsed.detail.map((item: { msg?: string }) => item.msg || 'Invalid input').join('; ')
+    if (Array.isArray(parsed.detail)) return parsed.detail.map((item: { msg?: string }) => item.msg || "Некорректные данные").join('; ')
     if (typeof parsed.error === 'string') return parsed.error
   } catch { /* A proxy may return a non-JSON error. */ }
-  return status === 401 ? 'The station token was not accepted. Reconnect with the token from station setup.'
-    : status === 413 ? 'This recording exceeds the station’s upload limit.'
-    : `The station could not complete this request (${status}). Please try again.`
+  return status === 401 ? "Токен не принят. Подключитесь заново с токеном из настройки станции."
+    : status === 413 ? "Запись превышает ограничение размера загрузки."
+    : `Не удалось выполнить запрос (${status}). Повторите попытку.`
 }
 async function response(config: WorkerConfig, path: string, init: RequestInit = {}): Promise<Response> {
   const result = await fetch(base + path, { ...init, headers: { ...headers(config), ...init.headers }, signal: init.signal || AbortSignal.timeout(20000) })
@@ -175,7 +175,7 @@ export function submitMeeting(config: WorkerConfig, input: {
   id: string; title: string; languageMode: string; outputLanguage: string; vocabulary?: string; diarization: boolean; file?: File; transcript?: string
 }, onProgress: (percent: number) => void, signal: AbortSignal): Promise<JobRecord> {
   const form = new FormData()
-  form.set('manifest_json', JSON.stringify({ meeting_id: input.id, title: input.title || 'Meeting', language_mode: input.languageMode, output_language: input.outputLanguage, vocabulary: input.vocabulary || '', diarization: input.diarization }))
+  form.set('manifest_json', JSON.stringify({ meeting_id: input.id, title: input.title || "Совещание", language_mode: input.languageMode, output_language: input.outputLanguage, vocabulary: input.vocabulary || '', diarization: input.diarization }))
   if (input.file) form.set('audio', input.file)
   else form.set('transcript', input.transcript || '')
   return new Promise((resolve, reject) => {
@@ -191,12 +191,12 @@ export function submitMeeting(config: WorkerConfig, input: {
     xhr.onload = () => {
       cleanup()
       if (xhr.status < 200 || xhr.status >= 300) return reject(new APIError(errorMessage(xhr.responseText, xhr.status), xhr.status))
-      try { resolve(JSON.parse(xhr.responseText) as JobRecord) } catch { reject(new Error('The station returned an unreadable response. Refresh the archive before trying again.')) }
+      try { resolve(JSON.parse(xhr.responseText) as JobRecord) } catch { reject(new Error("Ответ станции не удалось прочитать. Перед повтором обновите архив.")) }
     }
-    xhr.onerror = () => { cleanup(); reject(new Error('The upload connection was interrupted. Retry to resume the same submission.')) }
-    xhr.ontimeout = () => { cleanup(); reject(new Error('The upload timed out. Check the station connection and retry.')) }
-    xhr.onabort = () => { cleanup(); reject(new DOMException('Upload cancelled', 'AbortError')) }
-    if (signal.aborted) { cleanup(); reject(new DOMException('Upload cancelled', 'AbortError')); return }
+    xhr.onerror = () => { cleanup(); reject(new Error("Загрузка прервана. Повторите отправку того же файла.")) }
+    xhr.ontimeout = () => { cleanup(); reject(new Error("Истекло время загрузки. Проверьте соединение и повторите попытку.")) }
+    xhr.onabort = () => { cleanup(); reject(new DOMException("Загрузка отменена", 'AbortError')) }
+    if (signal.aborted) { cleanup(); reject(new DOMException("Загрузка отменена", 'AbortError')); return }
     xhr.send(form)
   })
 }
